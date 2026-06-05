@@ -1,16 +1,14 @@
 'use client';
 
-import React, { useState, Suspense, useEffect, useRef } from 'react';
+import React, { useState, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import {
   Lock, User, Building2, ArrowRight, ArrowLeft,
-  Phone, ShieldCheck, RefreshCw, CheckCircle2, Clock, Smartphone,
+  Phone, ShieldCheck, RefreshCw, CheckCircle2, Clock,
 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { api, saveToken, saveUser } from '@/lib/api';
-import { getFirebaseAuth, createRecaptchaVerifier } from '@/lib/firebase';
-import { signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
 
 type RegisterStep = 'details' | 'otp' | 'done';
 
@@ -22,8 +20,7 @@ function RegisterForm() {
   const [role, setRole] = useState<'customer' | 'salon'>(initialRole);
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
-  const recaptchaRef = useRef<HTMLDivElement>(null);
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const [displayOtp, setDisplayOtp] = useState('');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -34,12 +31,6 @@ function RegisterForm() {
     pin: '',
   });
   const [errorMsg, setErrorMsg] = useState('');
-
-  useEffect(() => {
-    return () => {
-      setConfirmationResult(null);
-    };
-  }, []);
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value;
@@ -64,14 +55,6 @@ function RegisterForm() {
   const fmtCountdown = () =>
     `${Math.floor(countdown / 60)}:${String(countdown % 60).padStart(2, '0')}`;
 
-  const sendFirebaseOtp = async (phone: string): Promise<ConfirmationResult> => {
-    const auth = getFirebaseAuth();
-    let verifier = createRecaptchaVerifier('recaptcha-container', auth);
-    const cleanPhone = phone.replace(/\s/g, '');
-    const result = await signInWithPhoneNumber(auth, cleanPhone, verifier);
-    return result;
-  };
-
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.phone.length !== 14) {
@@ -90,36 +73,34 @@ function RegisterForm() {
     setLoading(true);
     setErrorMsg('');
 
-    try {
-      const result = await sendFirebaseOtp(formData.phone);
-      setConfirmationResult(result);
-      startCountdown();
-      setStep('otp');
-    } catch (err: any) {
-      if (err.code === 'auth/too-many-requests') {
-        setErrorMsg('Too many requests. Please try again later.');
-      } else if (err.code === 'auth/invalid-phone-number') {
-        setErrorMsg('Invalid phone number format.');
-      } else {
-        setErrorMsg(err.message || 'Failed to send OTP via SMS');
-      }
-    }
+    const { data, error } = await api.post<{ message: string; expiresIn: number; otp?: string }>(
+      '/auth/send-register-otp',
+      { phone: formData.phone }
+    );
 
     setLoading(false);
+
+    if (error) {
+      setErrorMsg(error);
+      return;
+    }
+
+    if (data?.otp) setDisplayOtp(data.otp);
+    startCountdown();
+    setStep('otp');
   };
 
   const handleResendOtp = async () => {
     setLoading(true);
     setErrorMsg('');
-    try {
-      const result = await sendFirebaseOtp(formData.phone);
-      setConfirmationResult(result);
-      startCountdown();
-      setFormData((f) => ({ ...f, otp: '' }));
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to resend OTP');
-    }
+    const { data, error } = await api.post<{ message: string; otp?: string }>('/auth/send-register-otp', {
+      phone: formData.phone,
+    });
     setLoading(false);
+    if (error) { setErrorMsg(error); return; }
+    if (data?.otp) setDisplayOtp(data.otp);
+    startCountdown();
+    setFormData((f) => ({ ...f, otp: '' }));
   };
 
   const handleVerifyAndRegister = async () => {
@@ -127,63 +108,46 @@ function RegisterForm() {
       setErrorMsg('Please enter the 6-digit OTP.');
       return;
     }
-    if (!confirmationResult) {
-      setErrorMsg('No OTP was sent. Please request a new one.');
-      return;
-    }
-
     setLoading(true);
     setErrorMsg('');
 
-    try {
-      const credential = await confirmationResult.confirm(formData.otp);
-      const idToken = await credential.user.getIdToken();
+    const { error: verifyErr } = await api.post('/auth/verify-register-otp', {
+      phone: formData.phone,
+      otp: formData.otp,
+    });
 
-      const { error: verifyErr } = await api.post('/auth/firebase-verify', {
-        idToken,
-        purpose: 'register',
-      });
-
-      if (verifyErr) {
-        setErrorMsg(verifyErr);
-        setLoading(false);
-        return;
-      }
-
-      const { data, error: regErr } = await api.post<{
-        token: string;
-        user: Record<string, unknown>;
-      }>('/auth/register', {
-        name: role === 'customer' ? formData.name : undefined,
-        salonName: role === 'salon' ? formData.salonName : undefined,
-        email: role === 'salon' ? formData.email : undefined,
-        phone: formData.phone,
-        pin: formData.pin,
-        role,
-      });
-
+    if (verifyErr) {
+      setErrorMsg(verifyErr);
       setLoading(false);
+      return;
+    }
 
-      if (regErr) {
-        setErrorMsg(regErr);
-        return;
-      }
+    const { data, error: regErr } = await api.post<{
+      token: string;
+      user: Record<string, unknown>;
+    }>('/auth/register', {
+      name: role === 'customer' ? formData.name : undefined,
+      salonName: role === 'salon' ? formData.salonName : undefined,
+      email: role === 'salon' ? formData.email : undefined,
+      phone: formData.phone,
+      pin: formData.pin,
+      role,
+    });
 
-      if (data) {
-        saveToken(data.token);
-        saveUser(data.user);
-        setStep('done');
-        setTimeout(() => {
-          window.location.href = role === 'salon' ? '/salon/dashboard' : '/salon/customer';
-        }, 1800);
-      }
-    } catch (err: any) {
-      if (err.code === 'auth/invalid-verification-code') {
-        setErrorMsg('Invalid OTP. Please try again.');
-      } else {
-        setErrorMsg(err.message || 'Verification failed');
-      }
-      setLoading(false);
+    setLoading(false);
+
+    if (regErr) {
+      setErrorMsg(regErr);
+      return;
+    }
+
+    if (data) {
+      saveToken(data.token);
+      saveUser(data.user);
+      setStep('done');
+      setTimeout(() => {
+        window.location.href = role === 'salon' ? '/salon/dashboard' : '/salon/customer';
+      }, 1800);
     }
   };
 
@@ -334,8 +298,6 @@ function RegisterForm() {
 
             {errorMsg && <p className="text-red-400 text-xs mt-2">{errorMsg}</p>}
 
-            <div id="recaptcha-container" ref={recaptchaRef} />
-
             <button
               type="submit"
               disabled={loading}
@@ -346,12 +308,11 @@ function RegisterForm() {
               {loading ? (
                 <span className="flex items-center gap-2">
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Sending OTP via SMS&hellip;
+                  Sending OTP&hellip;
                 </span>
               ) : (
                 <>
-                  <Smartphone className="w-5 h-5" />
-                  Send SMS OTP
+                  Send OTP
                   <ArrowRight className="w-5 h-5" />
                 </>
               )}
@@ -368,16 +329,12 @@ function RegisterForm() {
             transition={{ duration: 0.3 }}
             className="space-y-5"
           >
-            <div className="flex items-start gap-3 bg-blue-500/10 border border-blue-500/30 px-4 py-3.5 rounded-xl">
-              <Smartphone className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-blue-400 text-sm font-semibold">OTP sent via SMS</p>
-                <p className="text-[#A0A0A0] text-xs mt-0.5">
-                  A 6-digit code has been sent to{' '}
-                  <span className="text-[#F5F5F5] font-medium">{formData.phone}</span>
-                </p>
+            {displayOtp && (
+              <div className="bg-[#D4AF37]/10 border border-[#D4AF37]/30 px-4 py-3 rounded-xl text-center">
+                <p className="text-[#A0A0A0] text-xs mb-1">DEV MODE — Your OTP</p>
+                <p className="text-3xl font-bold text-[#D4AF37] tracking-widest font-mono">{displayOtp}</p>
               </div>
-            </div>
+            )}
 
             <div>
               <div className="flex justify-between items-center mb-2">

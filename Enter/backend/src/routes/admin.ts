@@ -349,6 +349,18 @@ router.get('/subscriptions/schools', adminAuthMiddleware, async (_req: AuthReque
   }
 });
 
+router.get('/subscriptions/salons', adminAuthMiddleware, async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const subs = await Subscription.find({ role: 'salon_admin' })
+      .populate('userId', 'name phone')
+      .sort({ createdAt: -1 });
+    res.json({ subscriptions: subs });
+  } catch (error) {
+    console.error('Admin get salon subscriptions error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 router.post('/subscriptions/approve/:id', adminAuthMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const sub = await Subscription.findById(req.params.id);
@@ -363,7 +375,8 @@ router.post('/subscriptions/approve/:id', adminAuthMiddleware, async (req: AuthR
 
     sub.status = 'active';
     sub.startDate = new Date();
-    sub.endDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    const days = sub.plan === '3month' ? 90 : 30;
+    sub.endDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
     await sub.save();
 
     res.json({ message: 'Subscription approved', subscription: sub });

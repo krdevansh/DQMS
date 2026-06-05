@@ -1,16 +1,14 @@
 'use client';
 
-import React, { useState, Suspense, useRef } from 'react';
+import React, { useState, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import {
   Phone, ArrowRight, ArrowLeft, ShieldCheck,
-  User, Building2, Clock, RefreshCw, CheckCircle2, Eye, EyeOff, Smartphone,
+  User, Building2, Clock, RefreshCw, CheckCircle2, Eye, EyeOff,
 } from 'lucide-react';
 import { api, saveToken, saveUser } from '@/lib/api';
-import { getFirebaseAuth, createRecaptchaVerifier } from '@/lib/firebase';
-import { signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
 
 // ─── Forgot PIN inline flow ───────────────────────────────────────────────────
 type ForgotStep = 'phone' | 'otp' | 'newpin' | 'done';
@@ -25,8 +23,7 @@ function ForgotPinFlow({ onCancel }: { onCancel: () => void }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [countdown, setCountdown] = useState(0);
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
-  const recaptchaRef = useRef<HTMLDivElement>(null);
+  const [displayOtp, setDisplayOtp] = useState('');
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value;
@@ -46,58 +43,28 @@ function ForgotPinFlow({ onCancel }: { onCancel: () => void }) {
     }, 1000);
   };
 
-  const sendFirebaseOtp = async (phoneNumber: string): Promise<ConfirmationResult> => {
-    const auth = getFirebaseAuth();
-    const verifier = createRecaptchaVerifier('forgot-recaptcha-container', auth);
-    return signInWithPhoneNumber(auth, phoneNumber.replace(/\s/g, ''), verifier);
-  };
-
   const handleSendOtp = async () => {
     if (phone.length !== 14) { setError('Enter a valid 10-digit phone number.'); return; }
-    setLoading(true);
-    setError('');
-    try {
-      const result = await sendFirebaseOtp(phone);
-      setConfirmationResult(result);
+    setLoading(true); setError('');
+    const { data, error: apiErr } = await api.post<{ message: string; expiresIn: number; otp?: string }>(
+      '/auth/forgot-pin', { phone }
+    );
+    setLoading(false);
+    if (apiErr) { setError(apiErr); return; }
+    if (data) {
+      if (data.otp) setDisplayOtp(data.otp);
       startCountdown();
       setStep('otp');
-    } catch (err: any) {
-      if (err.code === 'auth/too-many-requests') {
-        setError('Too many requests. Please try again later.');
-      } else {
-        setError(err.message || 'Failed to send OTP');
-      }
     }
-    setLoading(false);
   };
 
   const handleVerifyOtp = async () => {
     if (otp.length !== 6) { setError('Enter the 6-digit OTP.'); return; }
-    if (!confirmationResult) { setError('No OTP was sent. Request a new one.'); return; }
-
-    setLoading(true);
-    setError('');
-
-    try {
-      const credential = await confirmationResult.confirm(otp);
-      const idToken = await credential.user.getIdToken();
-
-      const { error: apiErr } = await api.post('/auth/firebase-verify', {
-        idToken,
-        purpose: 'forgot-pin',
-      });
-
-      setLoading(false);
-      if (apiErr) { setError(apiErr); return; }
-      setStep('newpin');
-    } catch (err: any) {
-      setLoading(false);
-      if (err.code === 'auth/invalid-verification-code') {
-        setError('Invalid OTP. Please try again.');
-      } else {
-        setError(err.message || 'Verification failed');
-      }
-    }
+    setLoading(true); setError('');
+    const { error: apiErr } = await api.post('/auth/verify-otp', { phone, otp });
+    setLoading(false);
+    if (apiErr) { setError(apiErr); return; }
+    setStep('newpin');
   };
 
   const handleResetPin = async () => {
@@ -173,7 +140,6 @@ function ForgotPinFlow({ onCancel }: { onCancel: () => void }) {
                 />
               </div>
             </div>
-            <div id="forgot-recaptcha-container" ref={recaptchaRef} />
             {error && <p className="text-red-400 text-xs">{error}</p>}
             <button
               onClick={handleSendOtp}
@@ -186,7 +152,7 @@ function ForgotPinFlow({ onCancel }: { onCancel: () => void }) {
                   Sending OTP&hellip;
                 </span>
               ) : (
-                <><Smartphone className="w-4 h-4" /> Send SMS OTP <ArrowRight className="w-4 h-4" /></>
+                <>Send OTP <ArrowRight className="w-4 h-4" /></>
               )}
             </button>
           </motion.div>
@@ -194,16 +160,12 @@ function ForgotPinFlow({ onCancel }: { onCancel: () => void }) {
 
         {step === 'otp' && (
           <motion.div key="fp-otp" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
-            <div className="flex items-start gap-3 bg-blue-500/10 border border-blue-500/30 px-4 py-3.5 rounded-xl">
-              <Smartphone className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-blue-400 text-sm font-semibold">OTP sent via SMS</p>
-                <p className="text-[#A0A0A0] text-xs mt-0.5">
-                  A 6-digit code has been sent to{' '}
-                  <span className="text-[#F5F5F5] font-medium">{phone}</span>
-                </p>
+            {displayOtp && (
+              <div className="bg-[#D4AF37]/10 border border-[#D4AF37]/30 px-4 py-3 rounded-xl text-center">
+                <p className="text-[#A0A0A0] text-xs mb-1">DEV MODE — Your OTP</p>
+                <p className="text-3xl font-bold text-[#D4AF37] tracking-widest font-mono">{displayOtp}</p>
               </div>
-            </div>
+            )}
             <div>
               <div className="flex justify-between items-center mb-2">
                 <label className="salon-label mb-0">6-Digit OTP</label>

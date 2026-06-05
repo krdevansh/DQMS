@@ -6,10 +6,16 @@ import { Wallet } from '../models/Wallet';
 
 const router = Router();
 
-router.post('/request', authMiddleware, roleAuth('hospital_admin', 'school_admin'), async (req: AuthRequest, res: Response): Promise<void> => {
+const PLAN_PRICES: Record<string, Record<string, number>> = {
+  hospital_admin: { '1month': 500 },
+  school_admin: { '1month': 2000 },
+  salon_admin: { '1month': 30, '3month': 85 },
+};
+
+router.post('/request', authMiddleware, roleAuth('hospital_admin', 'school_admin', 'salon_admin'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { utr, screenshot } = req.body;
-    const role = req.user!.role as 'hospital_admin' | 'school_admin';
+    const { utr, screenshot, plan } = req.body;
+    const role = req.user!.role as 'hospital_admin' | 'school_admin' | 'salon_admin';
 
     if (!utr || !screenshot) {
       res.status(400).json({ error: 'UTR and screenshot are required' });
@@ -21,7 +27,13 @@ router.post('/request', authMiddleware, roleAuth('hospital_admin', 'school_admin
       return;
     }
 
-    const amount = role === 'hospital_admin' ? 500 : 2000;
+    const effectivePlan = plan || '1month';
+    const prices = PLAN_PRICES[role];
+    if (!prices || !prices[effectivePlan]) {
+      res.status(400).json({ error: 'Invalid plan' });
+      return;
+    }
+    const amount = prices[effectivePlan];
 
     const existingUtrSub = await Subscription.findOne({ utr });
     if (existingUtrSub) {
@@ -44,6 +56,7 @@ router.post('/request', authMiddleware, roleAuth('hospital_admin', 'school_admin
     const subscription = new Subscription({
       userId: req.user!.userId,
       role,
+      plan: effectivePlan,
       amount,
       utr,
       screenshot,
@@ -62,7 +75,7 @@ router.post('/request', authMiddleware, roleAuth('hospital_admin', 'school_admin
   }
 });
 
-router.get('/my-status', authMiddleware, roleAuth('hospital_admin', 'school_admin'), async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/my-status', authMiddleware, roleAuth('hospital_admin', 'school_admin', 'salon_admin'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const sub = await Subscription.findOne({ userId: req.user!.userId }).sort({ createdAt: -1 });
     if (!sub) {

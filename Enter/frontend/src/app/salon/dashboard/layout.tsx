@@ -12,7 +12,8 @@ import {
   LogOut,
   Scissors,
   Menu,
-  X
+  X,
+  CreditCard
 } from 'lucide-react';
 import { getUser } from '@/lib/api';
 import { useLanguage } from '@/lib/language-context';
@@ -22,6 +23,7 @@ const sidebarItems = [
   { nameKey: 'nav.editProfile', key: 'profile', icon: UserCircle },
   { nameKey: 'nav.myEarnings', key: 'earnings', icon: Wallet },
   { nameKey: 'nav.yourShop', key: 'shop', icon: Store },
+  { nameKey: 'nav.subscription', key: 'subscription', icon: CreditCard },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

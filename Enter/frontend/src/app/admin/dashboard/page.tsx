@@ -118,7 +118,7 @@ export default function AdminDashboard() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
-  const [pendingCounts, setPendingCounts] = useState({ recharges: 0, hospitalSubs: 0, schoolSubs: 0 });
+  const [pendingCounts, setPendingCounts] = useState({ recharges: 0, hospitalSubs: 0, schoolSubs: 0, salonSubs: 0 });
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -127,7 +127,7 @@ export default function AdminDashboard() {
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    const [salonsRes, usersRes, bookingsRes, queueRes, hospitalsRes, schoolsRes, rechargesRes, hospSubsRes, schSubsRes] = await Promise.all([
+    const [salonsRes, usersRes, bookingsRes, queueRes, hospitalsRes, schoolsRes, rechargesRes, hospSubsRes, schSubsRes, salonSubsRes] = await Promise.all([
       adminApi.get<{ salons: Salon[] }>('/admin/salons'),
       adminApi.get<{ users: User[] }>('/admin/users'),
       adminApi.get<{ bookings: Booking[] }>('/admin/bookings'),
@@ -137,6 +137,7 @@ export default function AdminDashboard() {
       adminApi.get<{ recharges: any[] }>('/admin/recharges/pending'),
       adminApi.get<{ subscriptions: any[] }>('/admin/subscriptions/hospitals'),
       adminApi.get<{ subscriptions: any[] }>('/admin/subscriptions/schools'),
+      adminApi.get<{ subscriptions: any[] }>('/admin/subscriptions/salons'),
     ]);
     if (salonsRes.data) setSalons(salonsRes.data.salons);
     if (usersRes.data) setUsers(usersRes.data.users);
@@ -147,6 +148,7 @@ export default function AdminDashboard() {
     if (rechargesRes.data) setPendingCounts(prev => ({ ...prev, recharges: rechargesRes.data!.recharges.length }));
     if (hospSubsRes.data) setPendingCounts(prev => ({ ...prev, hospitalSubs: hospSubsRes.data!.subscriptions.filter((s: any) => s.status === 'pending').length }));
     if (schSubsRes.data) setPendingCounts(prev => ({ ...prev, schoolSubs: schSubsRes.data!.subscriptions.filter((s: any) => s.status === 'pending').length }));
+    if (salonSubsRes.data) setPendingCounts(prev => ({ ...prev, salonSubs: salonSubsRes.data!.subscriptions.filter((s: any) => s.status === 'pending').length }));
     setLoading(false);
   }, []);
 
@@ -569,11 +571,15 @@ export default function AdminDashboard() {
                                     )}
                                   </Link>
                                   <Link
-                                    href="/admin/recharges"
+                                    href="/admin/subscriptions/salons"
+                                    onClick={() => { setMenuOpen(false); setExpandedSection(null); }}
                                     className="flex items-center gap-3 px-8 py-2.5 text-sm text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
                                   >
                                     <ClipboardList className="w-3.5 h-3.5 text-blue-400" />
                                     <span>Salon Subscriptions</span>
+                                    {pendingCounts.salonSubs > 0 && (
+                                      <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-semibold">{pendingCounts.salonSubs}</span>
+                                    )}
                                   </Link>
                                 </div>
                               </motion.div>

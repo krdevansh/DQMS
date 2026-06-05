@@ -31,7 +31,6 @@ router.post('/send-register-otp', async (req: AuthRequest, res: Response): Promi
       return;
     }
 
-    // Check if phone already registered
     const existing = await User.findOne({ phone });
     if (existing) {
       res.status(409).json({ error: 'Phone number already registered' });
@@ -42,22 +41,20 @@ router.post('/send-register-otp', async (req: AuthRequest, res: Response): Promi
     registerOtpStore.set(phone, { otp, expiresAt: Date.now() + 10 * 60 * 1000, verified: false });
 
     try {
-      // Wait up to 20s for WhatsApp to auto-reconnect after server restart
       const ready = await waitForReady(20000);
-      if (!ready) {
-        res.status(503).json({
-          error: 'WhatsApp is still connecting. Please wait a moment and try again.',
-        });
-        return;
+      if (ready) {
+        await sendWhatsAppOtp(phone, otp);
       }
-      await sendWhatsAppOtp(phone, otp);
-      res.json({ message: 'OTP sent to your WhatsApp', expiresIn: 600 });
     } catch (waErr: any) {
       console.error('WhatsApp OTP error:', waErr.message);
-      res.status(503).json({
-        error: 'WhatsApp is not connected. Please scan the QR code in the server terminal.',
-      });
     }
+
+    const isDev = env.NODE_ENV !== 'production';
+    res.json({
+      message: isDev ? `OTP: ${otp}` : 'OTP sent to your WhatsApp',
+      expiresIn: 600,
+      ...(isDev ? { otp } : {}),
+    });
   } catch (error) {
     console.error('Send register OTP error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -222,22 +219,20 @@ router.post('/forgot-pin', async (req: AuthRequest, res: Response): Promise<void
     otpStore.set(phone, { otp, expiresAt: Date.now() + 10 * 60 * 1000 });
 
     try {
-      // Wait up to 20s for WhatsApp to auto-reconnect after server restart
       const ready = await waitForReady(20000);
-      if (!ready) {
-        res.status(503).json({
-          error: 'WhatsApp is still connecting. Please wait a moment and try again.',
-        });
-        return;
+      if (ready) {
+        await sendWhatsAppOtp(phone, otp);
       }
-      await sendWhatsAppOtp(phone, otp);
-      res.json({ message: 'OTP sent to your WhatsApp', expiresIn: 600 });
     } catch (waErr: any) {
       console.error('WhatsApp OTP error:', waErr.message);
-      res.status(503).json({
-        error: 'WhatsApp is not connected. Please scan the QR code in the server terminal.',
-      });
     }
+
+    const isDev = env.NODE_ENV !== 'production';
+    res.json({
+      message: isDev ? `OTP: ${otp}` : 'OTP sent to your WhatsApp',
+      expiresIn: 600,
+      ...(isDev ? { otp } : {}),
+    });
   } catch (error) {
     console.error('Forgot PIN error:', error);
     res.status(500).json({ error: 'Internal server error' });

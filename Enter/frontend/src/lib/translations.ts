@@ -80,6 +80,7 @@ const translations: Record<string, { en: string; hi: string }> = {
 
   'skip.note': { en: 'As you could not reach on time you are skipped and positioned 3rd', hi: 'चूंकि आप समय पर नहीं पहुंच सके, आपको छोड़ दिया गया और तीसरे स्थान पर रखा गया' },
 
+  'nav.subscription': { en: 'Subscription', hi: 'सदस्यता' },
   'nav.myEarnings': { en: 'My Earnings', hi: 'मेरी कमाई' },
   'nav.yourShop': { en: 'Your Shop', hi: 'आपकी दुकान' },
   'nav.menu': { en: 'Menu', hi: 'मेन्यू' },
