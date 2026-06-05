@@ -68,7 +68,7 @@ export default function HospitalDashboard() {
 
   useEffect(() => { fetchHospital(); }, [fetchHospital]);
 
-  function logout() { clearToken(); clearUser(); router.push('/'); }
+  const logout = () => { clearToken(); clearUser(); router.push('/'); };
 
   if (loading) {
     return (
