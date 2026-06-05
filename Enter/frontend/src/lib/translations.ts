@@ -138,7 +138,6 @@ const translations: Record<string, { en: string; hi: string }> = {
   'customer.viewStyle': { en: 'View Style', hi: 'स्टाइल देखें' },
   'customer.aiPick': { en: 'AI Pick', hi: 'एआई पसंद' },
   'customer.aiSuggested': { en: 'AI Suggested Hairstyles', hi: 'एआई सुझाए गए हेयरस्टाइल' },
-  'customer.haircutHistory': { en: 'Haircut History', hi: 'बाल कटाई इतिहास' },
   'customer.total': { en: 'total', hi: 'कुल' },
   'customer.noHistory': { en: 'No haircut history yet.', hi: 'अभी तक कोई बाल कटाई इतिहास नहीं है।' },
   'customer.completedBookings': { en: 'Your completed bookings will appear here.', hi: 'आपकी पूर्ण बुकिंग यहां दिखाई देगी।' },
