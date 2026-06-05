@@ -1,0 +1,79 @@
+import { Router, Response } from 'express';
+import { authMiddleware, roleAuth } from '../middleware/auth';
+import { AuthRequest } from '../types';
+import { Subscription } from '../models/Subscription';
+import { Wallet } from '../models/Wallet';
+
+const router = Router();
+
+router.post('/request', authMiddleware, roleAuth('hospital_admin', 'school_admin'), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { utr, screenshot } = req.body;
+    const role = req.user!.role as 'hospital_admin' | 'school_admin';
+
+    if (!utr || !screenshot) {
+      res.status(400).json({ error: 'UTR and screenshot are required' });
+      return;
+    }
+
+    if (!/^\d{12}$/.test(utr)) {
+      res.status(400).json({ error: 'UTR must be exactly 12 digits' });
+      return;
+    }
+
+    const amount = role === 'hospital_admin' ? 500 : 2000;
+
+    const existingUtrSub = await Subscription.findOne({ utr });
+    if (existingUtrSub) {
+      res.status(409).json({ error: 'This UTR has already been used for a subscription' });
+      return;
+    }
+
+    const walletUtr = await Wallet.findOne({ 'transactions.utr': utr });
+    if (walletUtr) {
+      res.status(409).json({ error: 'This UTR has already been used for a wallet recharge' });
+      return;
+    }
+
+    const existingActive = await Subscription.findOne({ userId: req.user!.userId, status: 'active' });
+    if (existingActive) {
+      res.status(409).json({ error: 'You already have an active subscription' });
+      return;
+    }
+
+    const subscription = new Subscription({
+      userId: req.user!.userId,
+      role,
+      amount,
+      utr,
+      screenshot,
+      status: 'pending',
+    });
+
+    await subscription.save();
+
+    res.status(201).json({
+      message: 'Subscription request submitted for admin approval',
+      subscription,
+    });
+  } catch (error) {
+    console.error('Subscription request error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/my-status', authMiddleware, roleAuth('hospital_admin', 'school_admin'), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const sub = await Subscription.findOne({ userId: req.user!.userId }).sort({ createdAt: -1 });
+    if (!sub) {
+      res.json({ subscription: null });
+      return;
+    }
+    res.json({ subscription: sub });
+  } catch (error) {
+    console.error('Get subscription status error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+export default router;

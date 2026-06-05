@@ -1,0 +1,290 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply bg-[#F5F7FA] text-[#1E293B] antialiased dark:bg-[#0a0a14] dark:text-[#E2E8F0];
+    font-family: 'Inter', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Poppins', sans-serif;
+  }
+}
+
+@layer utilities {
+  .dqms-gradient {
+    background: linear-gradient(135deg, #2563EB 0%, #06B6D4 100%);
+  }
+
+  .dqms-glass {
+    @apply bg-white/70 backdrop-blur-lg border border-white/20 shadow-xl dark:bg-[#111118]/80 dark:border-white/5;
+  }
+
+  .dqms-card {
+    @apply bg-white rounded-2xl shadow-lg border border-slate-100/50 transition-all duration-300 dark:bg-[#111118] dark:border-white/5 dark:shadow-xl dark:shadow-black/20;
+  }
+
+  .dqms-card:hover {
+    @apply shadow-2xl -translate-y-1 dark:shadow-black/30;
+  }
+
+  .dqms-btn-primary {
+    @apply bg-gradient-to-r from-[#2563EB] to-[#06B6D4] text-white font-semibold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300;
+  }
+
+  .dqms-btn-secondary {
+    @apply bg-white text-[#2563EB] font-semibold px-6 py-3 rounded-xl border-2 border-[#2563EB] hover:bg-[#2563EB] hover:text-white transition-all duration-300 dark:bg-transparent dark:hover:bg-[#2563EB];
+  }
+
+  .dqms-nav {
+    @apply bg-white/80 backdrop-blur-lg border-b border-slate-200/50 shadow-sm dark:bg-[#0a0a14]/90 dark:border-white/5;
+  }
+
+  .dqms-text-primary {
+    @apply text-[#1E293B] dark:text-white;
+  }
+
+  .dqms-text-muted {
+    @apply text-slate-500 dark:text-slate-400;
+  }
+
+  .dqms-badge {
+    @apply bg-white shadow-lg border border-slate-100 dark:bg-[#111118] dark:border-white/5;
+  }
+
+  .dqms-footer {
+    @apply bg-[#1E293B] text-white dark:bg-[#050508];
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.6s ease-out forwards;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-15px); }
+  100% { transform: translateY(0px); }
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-300 rounded-full dark:bg-slate-700;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-400 dark:bg-slate-600;
+}
+
+/* Healthcare Theme Styles */
+.hospital-container {
+  @apply max-w-7xl mx-auto px-4 sm:px-6;
+}
+
+.hospital-card {
+  @apply bg-white rounded-xl border border-[#E2E8F0] shadow-sm transition-all duration-200;
+}
+
+.hospital-card:hover {
+  @apply shadow-md;
+}
+
+.hospital-btn-primary {
+  @apply bg-[#2563EB] text-white font-medium px-5 py-2.5 rounded-lg hover:bg-[#1D4ED8] transition-colors duration-200 text-sm;
+}
+
+.hospital-btn-secondary {
+  @apply bg-white text-[#2563EB] font-medium px-5 py-2.5 rounded-lg border border-[#E2E8F0] hover:bg-[#F8FAFC] hover:border-[#2563EB] transition-colors duration-200 text-sm;
+}
+
+.hospital-btn-success {
+  @apply bg-[#10B981] text-white font-medium px-5 py-2.5 rounded-lg hover:bg-[#059669] transition-colors duration-200 text-sm;
+}
+
+.hospital-btn-danger {
+  @apply bg-[#EF4444] text-white font-medium px-5 py-2.5 rounded-lg hover:bg-[#DC2626] transition-colors duration-200 text-sm;
+}
+
+.hospital-input {
+  @apply w-full border border-[#E2E8F0] rounded-lg px-4 py-3 text-sm text-[#1E293B] placeholder:text-[#94A3B8] outline-none transition-all duration-200 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/10 bg-white;
+}
+
+.hospital-select {
+  @apply w-full border border-[#E2E8F0] rounded-lg px-4 py-3 text-sm text-[#1E293B] outline-none transition-all duration-200 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/10 bg-white appearance-none;
+}
+
+.hospital-label {
+  @apply block text-sm font-medium text-[#475569] mb-1.5;
+}
+
+.hospital-badge {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
+
+.hospital-stat {
+  @apply bg-white rounded-xl border border-[#E2E8F0] shadow-sm p-5;
+}
+
+.hospital-nav-link {
+  @apply flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-[#64748B] hover:text-[#1E293B] hover:bg-[#F1F5F9] transition-all duration-200;
+}
+
+.hospital-nav-link-active {
+  @apply flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-[#2563EB] text-white shadow-sm transition-all duration-200;
+}
+
+.hospital-bottom-nav {
+  @apply fixed bottom-0 left-0 right-0 bg-white border-t border-[#E2E8F0] px-2 py-1 z-50 md:hidden;
+}
+
+.hospital-bottom-nav-btn {
+  @apply flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg text-[10px] font-medium text-[#64748B] transition-colors duration-200;
+}
+
+.hospital-bottom-nav-btn-active {
+  @apply flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg text-[10px] font-medium text-[#2563EB] transition-colors duration-200;
+}
+
+.hospital-page {
+  @apply min-h-screen bg-[#F8FAFC] pb-20 md:pb-0;
+}
+
+.hospital-skeleton {
+  @apply bg-[#E2E8F0] rounded animate-pulse;
+}
+
+/* Salon Theme Styles */
+.salon-theme {
+  @apply bg-[#0D0D0D] text-[#F5F5F5] min-h-screen relative overflow-hidden;
+}
+
+.salon-noise-overlay {
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  opacity: 0.02;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.salon-grid-pattern {
+  background-image:
+    linear-gradient(rgba(212, 175, 55, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(212, 175, 55, 0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+.salon-glass-card {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+.salon-glass-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(212, 175, 55, 0.4);
+  box-shadow: 0 10px 40px rgba(212, 175, 55, 0.15);
+  transform: translateY(-4px);
+}
+
+@layer components {
+  .salon-input {
+    @apply w-full bg-[#161616] border border-white/10 text-[#F5F5F5] px-4 py-3 rounded-xl focus:outline-none focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/50 transition-all duration-300 placeholder:text-white/30;
+  }
+}
+
+.salon-label {
+  @apply block text-sm font-medium text-[#A0A0A0] mb-2;
+}
+
+.salon-btn-gold {
+  background: linear-gradient(135deg, #D4AF37 0%, #C9A227 100%);
+  color: #0D0D0D;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.salon-btn-gold:hover {
+  transform: scale(1.02);
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.4);
+}
+
+.salon-btn-neon {
+  background: linear-gradient(135deg, #FF8C42 0%, #FF6B1A 100%);
+  color: white;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  border-radius: 12px;
+}
+
+.salon-btn-neon:hover {
+  transform: scale(1.02);
+  box-shadow: 0 0 20px rgba(255, 140, 66, 0.5);
+}
+
+.salon-gradient-gold {
+  background: linear-gradient(135deg, #D4AF37 0%, #F5D77A 50%, #D4AF37 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.animate-gradient-shift {
+  background-size: 200% auto;
+  animation: gradientShift 3s ease-in-out infinite;
+}
+
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% center; }
+  50% { background-position: 100% center; }
+}
+
+.animate-glow-pulse {
+  animation: glowPulse 3s ease-in-out infinite;
+}
+
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.8; }
+}
