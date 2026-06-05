@@ -91,13 +91,11 @@ export default function HospitalDashboard() {
               <p className="text-sm text-[#64748B] mt-1">Set up your hospital profile to get started</p>
             </div>
             <CreateHospitalForm onCreated={() => fetchHospital()} />
-            </div>
           </div>
-        </motion.div>
-      )}
-    </motion.div>
-  );
-}
+        </div>
+      </div>
+    );
+  }
 
 function CreateHospitalForm({ onCreated }: { onCreated: () => void }) {
   const [form, setForm] = useState({ name: '', address: '', city: '', state: '', pincode: '', description: '', openTime: '09:00', closeTime: '18:00', latitude: 0, longitude: 0 });
