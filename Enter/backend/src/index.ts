@@ -4,7 +4,6 @@ import { createServer } from 'http';
 import { env } from './config/env';
 import { connectDB } from './config/db';
 import { initializeSocket } from './socket';
-import { initializeWhatsApp } from './services/whatsapp';
 import { errorHandler } from './utils/errors';
 import { rateLimit } from './middleware/rateLimit';
 
@@ -66,9 +65,6 @@ async function start() {
   // Start background jobs
   startSubscriptionExpiryCheck();
   startTicketCounterReset();
-
-  // Initialize WhatsApp client (scans QR on first run)
-  initializeWhatsApp();
 
   const httpServer = createServer(app);
   initializeSocket(httpServer);
