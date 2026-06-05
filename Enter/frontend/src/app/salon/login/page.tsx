@@ -49,7 +49,7 @@ function ForgotPinFlow({ onCancel }: { onCancel: () => void }) {
   const sendFirebaseOtp = async (phoneNumber: string): Promise<ConfirmationResult> => {
     const auth = getFirebaseAuth();
     const verifier = createRecaptchaVerifier('forgot-recaptcha-container', auth);
-    return signInWithPhoneNumber(auth, phoneNumber, verifier);
+    return signInWithPhoneNumber(auth, phoneNumber.replace(/\s/g, ''), verifier);
   };
 
   const handleSendOtp = async () => {

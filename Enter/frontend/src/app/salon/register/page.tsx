@@ -67,7 +67,8 @@ function RegisterForm() {
   const sendFirebaseOtp = async (phone: string): Promise<ConfirmationResult> => {
     const auth = getFirebaseAuth();
     let verifier = createRecaptchaVerifier('recaptcha-container', auth);
-    const result = await signInWithPhoneNumber(auth, phone, verifier);
+    const cleanPhone = phone.replace(/\s/g, '');
+    const result = await signInWithPhoneNumber(auth, cleanPhone, verifier);
     return result;
   };
 
