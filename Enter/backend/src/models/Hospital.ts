@@ -49,9 +49,9 @@ const WorkingHoursSchema = new Schema(
 const HospitalSchema = new Schema<IHospital>(
   {
     adminId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    hospitalId: { type: String, required: true, unique: true },
+    hospitalId: { type: String, required: true },
     name: { type: String, required: true },
-    slug: { type: String, required: true, unique: true },
+    slug: { type: String, required: true },
     logo: { type: String },
     email: { type: String },
     phone: { type: String },
@@ -80,6 +80,7 @@ const HospitalSchema = new Schema<IHospital>(
 );
 
 HospitalSchema.index({ slug: 1 }, { unique: true });
+HospitalSchema.index({ hospitalId: 1 }, { unique: true });
 HospitalSchema.index({ pincode: 1 });
 HospitalSchema.index({ city: 1 });
 HospitalSchema.index({ location: '2dsphere' });
