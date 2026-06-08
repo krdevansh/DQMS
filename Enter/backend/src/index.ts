@@ -25,8 +25,28 @@ import { startTicketCounterReset } from './cron/resetTicketCounter';
 
 const app = express();
 
+// ─── CORS ──────────────────────────────────────────────────────────────────
+const allowedOrigins = [
+  env.FRONTEND_URL,                    // from env (trailing slash already stripped)
+  'http://localhost:3000',             // local dev
+  'http://localhost:3001',
+].filter(Boolean).map((o) => o.replace(/\/$/, '')); // normalize all
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // allow non-browser requests (e.g. Postman, server-to-server)
+    if (!origin) return callback(null, true);
+    const normalized = origin.replace(/\/$/, '');
+    if (allowedOrigins.includes(normalized)) {
+      callback(null, true);
+    } else {
+      console.warn(`CORS blocked: ${origin} | allowed: ${allowedOrigins.join(', ')}`);
+      callback(new Error(`CORS: origin '${origin}' not allowed`));
+    }
+  },
+  credentials: true,
+}));
 // Middleware
-app.use(cors({ origin: env.FRONTEND_URL, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use(rateLimit(200, 60000)); // 200 requests per minute
 
