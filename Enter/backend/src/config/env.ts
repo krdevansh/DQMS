@@ -7,7 +7,7 @@ export const env = {
   MONGODB_URI: process.env.MONGODB_URI || 'mongodb://localhost:27017/dqms',
   JWT_SECRET: process.env.JWT_SECRET || 'fallback-secret',
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
-  FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:3000',
+  FRONTEND_URL: (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, ''),
   ADMIN_ID: process.env.ADMIN_ID || 'krdevansh@39',
   ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || 'krdevansh@143',
   CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || 'dyfcrlnhs',
