@@ -63,9 +63,9 @@ const MemberSchema = new Schema<IMember>(
 const SalonSchema = new Schema<ISalon>(
   {
     ownerId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    shopNumber: { type: String, required: true, unique: true },
+    shopNumber: { type: String, required: true },
     name: { type: String, required: true },
-    slug: { type: String, required: true, unique: true },
+    slug: { type: String, required: true },
     email: { type: String },
     phone: { type: String },
     address: { type: String, required: true },
@@ -90,5 +90,7 @@ const SalonSchema = new Schema<ISalon>(
 SalonSchema.index({ ownerId: 1 });
 SalonSchema.index({ pincode: 1 });
 SalonSchema.index({ city: 1 });
+SalonSchema.index({ slug: 1 }, { unique: true });
+SalonSchema.index({ shopNumber: 1 }, { unique: true });
 
 export const Salon = mongoose.model<ISalon>('Salon', SalonSchema);

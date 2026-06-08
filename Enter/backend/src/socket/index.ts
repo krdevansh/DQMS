@@ -7,7 +7,17 @@ let io: Server;
 export function initializeSocket(httpServer: HttpServer): Server {
   io = new Server(httpServer, {
     cors: {
-      origin: env.FRONTEND_URL,
+      origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+        const allowed = [
+          env.FRONTEND_URL,
+          'http://localhost:3000',
+          'http://localhost:3001',
+        ].filter(Boolean).map((o) => o.replace(/\/$/, ''));
+        const normalized = origin.replace(/\/$/, '');
+        if (allowed.includes(normalized)) callback(null, true);
+        else callback(new Error(`Socket CORS: origin '${origin}' not allowed`));
+      },
       credentials: true,
     },
   });

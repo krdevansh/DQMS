@@ -70,7 +70,7 @@ const DoctorSchema = new Schema<IDoctor>(
 
 DoctorSchema.index({ hospitalId: 1 });
 DoctorSchema.index({ departmentId: 1 });
-DoctorSchema.index({ doctorId: 1 }, { unique: true });
+// doctorId index removed — already unique:true on field definition
 DoctorSchema.index({ specialization: 1 });
 
 export const Doctor = mongoose.model<IDoctor>('Doctor', DoctorSchema);
