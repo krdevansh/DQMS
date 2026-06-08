@@ -1,5 +1,4 @@
-import express from 'express';
-import cors from 'cors';
+import express, { Request, Response, NextFunction } from 'express';
 import { createServer } from 'http';
 import { env } from './config/env';
 import { connectDB } from './config/db';
@@ -25,27 +24,40 @@ import { startTicketCounterReset } from './cron/resetTicketCounter';
 
 const app = express();
 
-// ─── CORS ──────────────────────────────────────────────────────────────────
-const allowedOrigins = [
-  env.FRONTEND_URL,                    // from env (trailing slash already stripped)
-  'http://localhost:3000',             // local dev
+// ─── CORS (manual — more reliable than cors npm pkg for credentials + function origin) ───
+const ALLOWED_ORIGINS = [
+  env.FRONTEND_URL,          // e.g. https://dqms-project.vercel.app
+  'http://localhost:3000',
   'http://localhost:3001',
-].filter(Boolean).map((o) => o.replace(/\/$/, '')); // normalize all
+].filter(Boolean).map((o) => o.replace(/\/$/, ''));
 
-app.use(cors({
-  origin: (origin, callback) => {
-    // allow non-browser requests (e.g. Postman, server-to-server)
-    if (!origin) return callback(null, true);
-    const normalized = origin.replace(/\/$/, '');
-    if (allowedOrigins.includes(normalized)) {
-      callback(null, true);
-    } else {
-      console.warn(`CORS blocked: ${origin} | allowed: ${allowedOrigins.join(', ')}`);
-      callback(new Error(`CORS: origin '${origin}' not allowed`));
+console.log('[CORS] Allowed origins:', ALLOWED_ORIGINS);
+
+app.use((req: Request, res: Response, next: NextFunction): void => {
+  const origin = req.headers.origin as string | undefined;
+  const normalized = origin ? origin.replace(/\/$/, '') : '';
+
+  if (!origin || ALLOWED_ORIGINS.includes(normalized)) {
+    if (origin) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
     }
-  },
-  credentials: true,
-}));
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Max-Age', '86400');
+
+    // Handle preflight
+    if (req.method === 'OPTIONS') {
+      res.status(204).end();
+      return;
+    }
+    next();
+  } else {
+    console.warn(`[CORS] Blocked: ${origin} | Allowed: ${ALLOWED_ORIGINS}`);
+    res.status(403).json({ error: 'CORS: origin not allowed' });
+  }
+});
+
 // Middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(rateLimit(200, 60000)); // 200 requests per minute
