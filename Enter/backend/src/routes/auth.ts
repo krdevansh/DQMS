@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User';
+import { Otp } from '../models/Otp';
 import { env } from '../config/env';
 import { authMiddleware } from '../middleware/auth';
 import { AuthRequest, RegisterBody, LoginBody } from '../types';
@@ -16,11 +17,7 @@ function generateToken(userId: string, role: string): string {
   });
 }
 
-// ─── In-memory OTP stores ──────────────────────────────────────────────────────
-// For forgot-pin flow
-const otpStore = new Map<string, { otp: string; expiresAt: number }>();
-// For register flow — tracks which phones have been OTP-verified
-const registerOtpStore = new Map<string, { otp: string; expiresAt: number; verified: boolean }>();
+const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 // ─── Register: Send OTP ────────────────────────────────────────────────────────
 router.post('/send-register-otp', async (req: AuthRequest, res: Response): Promise<void> => {
@@ -38,7 +35,14 @@ router.post('/send-register-otp', async (req: AuthRequest, res: Response): Promi
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    registerOtpStore.set(phone, { otp, expiresAt: Date.now() + 10 * 60 * 1000, verified: false });
+    const expiresAt = new Date(Date.now() + OTP_TTL_MS);
+
+    // Upsert: replace any existing OTP for this phone+type
+    await Otp.findOneAndUpdate(
+      { phone, type: 'register' },
+      { otp, expiresAt, verified: false },
+      { upsert: true, new: true }
+    );
 
     try {
       const ready = await waitForReady(20000);
@@ -69,13 +73,13 @@ router.post('/verify-register-otp', async (req: AuthRequest, res: Response): Pro
       return;
     }
 
-    const stored = registerOtpStore.get(phone);
+    const stored = await Otp.findOne({ phone, type: 'register' });
     if (!stored) {
       res.status(400).json({ error: 'No OTP found. Request a new one.' });
       return;
     }
-    if (Date.now() > stored.expiresAt) {
-      registerOtpStore.delete(phone);
+    if (new Date() > stored.expiresAt) {
+      await Otp.deleteOne({ phone, type: 'register' });
       res.status(400).json({ error: 'OTP has expired. Request a new one.' });
       return;
     }
@@ -84,8 +88,8 @@ router.post('/verify-register-otp', async (req: AuthRequest, res: Response): Pro
       return;
     }
 
-    // Mark phone as verified (keep in store until register completes)
-    registerOtpStore.set(phone, { ...stored, verified: true });
+    // Mark as verified
+    await Otp.findOneAndUpdate({ phone, type: 'register' }, { verified: true });
     res.json({ message: 'Phone verified successfully' });
   } catch (error) {
     console.error('Verify register OTP error:', error);
@@ -109,7 +113,7 @@ router.post('/register', async (req: AuthRequest, res: Response): Promise<void> 
     }
 
     // Ensure phone was OTP-verified
-    const regEntry = registerOtpStore.get(phone);
+    const regEntry = await Otp.findOne({ phone, type: 'register' });
     if (!regEntry || !regEntry.verified) {
       res.status(403).json({ error: 'Phone number not verified. Please complete OTP verification.' });
       return;
@@ -134,8 +138,8 @@ router.post('/register', async (req: AuthRequest, res: Response): Promise<void> 
 
     await user.save();
 
-    // Clean up OTP store after successful registration
-    registerOtpStore.delete(phone);
+    // Clean up OTP after successful registration
+    await Otp.deleteOne({ phone, type: 'register' });
 
     const token = generateToken(user._id.toString(), role);
 
@@ -151,8 +155,19 @@ router.post('/register', async (req: AuthRequest, res: Response): Promise<void> 
         role: user.role,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Register error:', error);
+    if (error.code === 11000) {
+      res.status(409).json({ error: 'Phone number already registered' });
+      return;
+    }
+    if (error.name === 'ValidationError') {
+      const msg = Object.values(error.errors as Record<string, any>)
+        .map((e) => e.message)
+        .join(', ');
+      res.status(400).json({ error: msg });
+      return;
+    }
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -215,7 +230,13 @@ router.post('/forgot-pin', async (req: AuthRequest, res: Response): Promise<void
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    otpStore.set(phone, { otp, expiresAt: Date.now() + 10 * 60 * 1000 });
+    const expiresAt = new Date(Date.now() + OTP_TTL_MS);
+
+    await Otp.findOneAndUpdate(
+      { phone, type: 'forgot-pin' },
+      { otp, expiresAt, verified: false },
+      { upsert: true, new: true }
+    );
 
     try {
       const ready = await waitForReady(20000);
@@ -246,14 +267,14 @@ router.post('/verify-otp', async (req: AuthRequest, res: Response): Promise<void
       return;
     }
 
-    const stored = otpStore.get(phone);
+    const stored = await Otp.findOne({ phone, type: 'forgot-pin' });
     if (!stored) {
       res.status(400).json({ error: 'No OTP found. Request a new one.' });
       return;
     }
 
-    if (Date.now() > stored.expiresAt) {
-      otpStore.delete(phone);
+    if (new Date() > stored.expiresAt) {
+      await Otp.deleteOne({ phone, type: 'forgot-pin' });
       res.status(400).json({ error: 'OTP has expired. Request a new one.' });
       return;
     }
@@ -285,14 +306,14 @@ router.post('/reset-pin', async (req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
-    const stored = otpStore.get(phone);
+    const stored = await Otp.findOne({ phone, type: 'forgot-pin' });
     if (!stored) {
       res.status(400).json({ error: 'No OTP found. Request a new one.' });
       return;
     }
 
-    if (Date.now() > stored.expiresAt) {
-      otpStore.delete(phone);
+    if (new Date() > stored.expiresAt) {
+      await Otp.deleteOne({ phone, type: 'forgot-pin' });
       res.status(400).json({ error: 'OTP has expired. Request a new one.' });
       return;
     }
@@ -302,7 +323,7 @@ router.post('/reset-pin', async (req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
-    otpStore.delete(phone);
+    await Otp.deleteOne({ phone, type: 'forgot-pin' });
 
     const hashedPin = await bcrypt.hash(newPin, 10);
     const user = await User.findOneAndUpdate({ phone }, { pin: hashedPin }, { new: true });
@@ -341,7 +362,12 @@ router.post('/firebase-verify', async (req: AuthRequest, res: Response): Promise
         res.status(409).json({ error: 'Phone number already registered' });
         return;
       }
-      registerOtpStore.set(phone, { otp: 'firebase-verified', expiresAt: Date.now() + 10 * 60 * 1000, verified: true });
+      const expiresAt = new Date(Date.now() + OTP_TTL_MS);
+      await Otp.findOneAndUpdate(
+        { phone, type: 'register' },
+        { otp: 'firebase-verified', expiresAt, verified: true },
+        { upsert: true, new: true }
+      );
     }
 
     res.json({ message: 'Phone verified successfully', phone });
