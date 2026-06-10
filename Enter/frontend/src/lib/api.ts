@@ -1,4 +1,8 @@
+// In production (Vercel), NEXT_PUBLIC_API_URL is set to '/api' (relative).
+// Vercel rewrites /api/* → Render backend (no CORS needed).
+// Locally, NEXT_PUBLIC_API_URL is http://localhost:3001/api (direct connection).
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+
 
 export interface ApiResponse<T = unknown> {
   data?: T;
