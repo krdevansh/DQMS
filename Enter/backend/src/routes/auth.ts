@@ -49,11 +49,10 @@ router.post('/send-register-otp', async (req: AuthRequest, res: Response): Promi
       console.error('WhatsApp OTP error:', waErr.message);
     }
 
-    const isDev = env.NODE_ENV !== 'production';
     res.json({
-      message: isDev ? `OTP: ${otp}` : 'OTP sent to your WhatsApp',
+      message: env.SHOW_OTP ? `OTP: ${otp}` : 'OTP sent to your WhatsApp',
       expiresIn: 600,
-      ...(isDev ? { otp } : {}),
+      ...(env.SHOW_OTP ? { otp } : {}),
     });
   } catch (error) {
     console.error('Send register OTP error:', error);
@@ -227,11 +226,10 @@ router.post('/forgot-pin', async (req: AuthRequest, res: Response): Promise<void
       console.error('WhatsApp OTP error:', waErr.message);
     }
 
-    const isDev = env.NODE_ENV !== 'production';
     res.json({
-      message: isDev ? `OTP: ${otp}` : 'OTP sent to your WhatsApp',
+      message: env.SHOW_OTP ? `OTP: ${otp}` : 'OTP sent to your WhatsApp',
       expiresIn: 600,
-      ...(isDev ? { otp } : {}),
+      ...(env.SHOW_OTP ? { otp } : {}),
     });
   } catch (error) {
     console.error('Forgot PIN error:', error);
