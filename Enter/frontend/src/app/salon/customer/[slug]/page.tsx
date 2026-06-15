@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
   Scissors, Clock, MapPin, Star, ArrowLeft, ArrowRight,
   CheckCircle, Sparkles, Hash, Phone,
-  Coins, X, UserPlus, Check, ShoppingBag,
+  Coins, X, UserPlus, Check, ShoppingBag, User,
 } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { api, getToken } from '@/lib/api';
@@ -38,7 +38,7 @@ interface SalonDetail {
   lat: number;
   lng: number;
   services: Service[];
-  members: { name: string; specialization: string; experience: string }[];
+  members: { name: string; specialization: string; experience: string; image?: string }[];
   image: string;
 }
 
@@ -683,6 +683,33 @@ export default function SalonViewPage() {
                       <Sparkles className="w-5 h-5 text-[#D4AF37]" />
                       {t('salon.services')}
                     </h2>
+                    {/* Staff / Team Section */}
+                    {salon.members && salon.members.length > 0 && (
+                      <div className="mb-6">
+                        <h3 className="text-base font-bold text-[#F5F5F5] mb-3 flex items-center gap-2">
+                          <User className="w-4 h-4 text-[#D4AF37]" />
+                          Our Team
+                        </h3>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          {salon.members.map((member, idx) => (
+                            <div key={idx} className="bg-[#161616] border border-[#333] rounded-xl p-3 text-center">
+                              <div className="w-12 h-12 rounded-full bg-[#1A1A2E] border border-white/10 overflow-hidden mx-auto mb-2">
+                                {member.image ? (
+                                  <img src={member.image} alt={member.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center">
+                                    <User className="w-5 h-5 text-[#444]" />
+                                  </div>
+                                )}
+                              </div>
+                              <p className="text-[#F5F5F5] text-xs font-semibold truncate">{member.name}</p>
+                              <p className="text-[#A0A0A0] text-[10px] truncate">{member.specialization}</p>
+                              <p className="text-[#666] text-[10px]">{member.experience}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     {hasServices ? (
                       <div className="grid gap-3">
                         {salon.services.map((service) => (

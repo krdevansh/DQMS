@@ -197,23 +197,18 @@ router.get('/stats/:salonId', authMiddleware, async (req: AuthRequest, res: Resp
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfYear = new Date(now.getFullYear(), 0, 1);
 
+    const pipeline = (matchFilter: any) => [
+      { $match: { salonId: new mongoose.Types.ObjectId(req.params.salonId), status: 'completed', ...matchFilter } },
+      { $unwind: { path: '$services', preserveNullAndEmptyArrays: true } },
+      { $match: { 'services.completed': true } },
+      { $group: { _id: null, count: { $sum: 1 }, earnings: { $sum: '$services.price' } } },
+    ];
+
     const [todayResult, monthResult, yearResult, allResult] = await Promise.all([
-      QueueEntry.aggregate([
-        { $match: { salonId: new mongoose.Types.ObjectId(req.params.salonId), status: 'completed', completedAt: { $gte: startOfDay } } },
-        { $group: { _id: null, count: { $sum: 1 }, earnings: { $sum: '$totalPrice' } } },
-      ]),
-      QueueEntry.aggregate([
-        { $match: { salonId: new mongoose.Types.ObjectId(req.params.salonId), status: 'completed', completedAt: { $gte: startOfMonth } } },
-        { $group: { _id: null, count: { $sum: 1 }, earnings: { $sum: '$totalPrice' } } },
-      ]),
-      QueueEntry.aggregate([
-        { $match: { salonId: new mongoose.Types.ObjectId(req.params.salonId), status: 'completed', completedAt: { $gte: startOfYear } } },
-        { $group: { _id: null, count: { $sum: 1 }, earnings: { $sum: '$totalPrice' } } },
-      ]),
-      QueueEntry.aggregate([
-        { $match: { salonId: new mongoose.Types.ObjectId(req.params.salonId), status: 'completed' } },
-        { $group: { _id: null, count: { $sum: 1 }, earnings: { $sum: '$totalPrice' } } },
-      ]),
+      QueueEntry.aggregate(pipeline({ completedAt: { $gte: startOfDay } })),
+      QueueEntry.aggregate(pipeline({ completedAt: { $gte: startOfMonth } })),
+      QueueEntry.aggregate(pipeline({ completedAt: { $gte: startOfYear } })),
+      QueueEntry.aggregate(pipeline({})),
     ]);
 
     res.json({
@@ -316,16 +311,12 @@ router.patch('/:id/tick-service/:index', authMiddleware, async (req: AuthRequest
   }
 });
 
-// PATCH /queue/:id/complete - Complete current serving (mark all services completed if not already)
+// PATCH /queue/:id/complete - Complete current serving (only ticked services count toward earnings)
 router.patch('/:id/complete', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const check = await checkOwner(req, req.params.id);
     if (!check.valid) { res.status(check.error!.status).json({ error: check.error!.message }); return; }
     const entry = check.entry!;
-
-    if (entry.services && entry.services.length > 0) {
-      entry.services.forEach((s: any) => { s.completed = true; });
-    }
 
     entry.status = 'completed';
     entry.completedAt = new Date();

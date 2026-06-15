@@ -176,12 +176,12 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response): Prom
       return;
     }
 
-    const updates = req.body;
-    delete updates.ownerId;
-    delete updates.shopNumber;
-    delete updates.slug;
-
-    Object.assign(salon, updates);
+    const allowedFields = ['name', 'email', 'phone', 'address', 'city', 'pincode', 'description', 'salonType', 'isOpen', 'lat', 'lng', 'image', 'services', 'members'];
+    for (const key of allowedFields) {
+      if (req.body[key] !== undefined) {
+        (salon as any)[key] = req.body[key];
+      }
+    }
 
     const prefix = salon.shopNumber?.split('-')[0];
     if (prefix && prefix !== salon.pincode) {
