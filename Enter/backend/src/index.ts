@@ -21,7 +21,7 @@ import uploadRoutes from './routes/upload';
 import subscriptionRoutes from './routes/subscriptions';
 import { startSubscriptionExpiryCheck } from './cron/checkSubscriptionExpiry';
 import { startTicketCounterReset } from './cron/resetTicketCounter';
-
+import { initWhatsApp, isClientReady, getQr } from './services/whatsapp';
 
 const app = express();
 
@@ -70,7 +70,21 @@ app.get('/api/health', (_req, res) => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     environment: env.NODE_ENV,
+    whatsapp: {
+      ready: isClientReady(),
+    },
   });
+});
+
+app.get('/api/whatsapp-qr', (_req, res) => {
+  const qr = getQr();
+  if (isClientReady()) {
+    res.json({ ready: true, message: 'WhatsApp is already connected' });
+  } else if (qr) {
+    res.json({ ready: false, qr });
+  } else {
+    res.json({ ready: false, message: 'QR code not yet generated. Try again in a moment.' });
+  }
 });
 
 // Routes
@@ -98,6 +112,8 @@ async function start() {
   // Start background jobs
   startSubscriptionExpiryCheck();
   startTicketCounterReset();
+
+  initWhatsApp();
 
   const httpServer = createServer(app);
   initializeSocket(httpServer);

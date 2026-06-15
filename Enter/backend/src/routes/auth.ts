@@ -6,7 +6,7 @@ import { Otp } from '../models/Otp';
 import { env } from '../config/env';
 import { authMiddleware } from '../middleware/auth';
 import { AuthRequest, RegisterBody, LoginBody } from '../types';
-import { sendOtpViaFast2SMS } from '../services/otpService';
+import { sendWhatsAppOtp } from '../services/whatsapp';
 import { verifyPhoneToken, isFirebaseConfigured } from '../services/firebase';
 
 const router = Router();
@@ -45,15 +45,15 @@ router.post('/send-register-otp', async (req: AuthRequest, res: Response): Promi
     );
 
     try {
-      await sendOtpViaFast2SMS(phone, otp);
+      await sendWhatsAppOtp(phone, otp);
     } catch (waErr: any) {
-      console.error('[OTP] Fast2SMS delivery failed:', waErr.message);
-      res.status(503).json({ error: 'Failed to send OTP via SMS. Please try again in a moment.' });
+      console.error('[OTP] WhatsApp delivery failed:', waErr.message);
+      res.status(503).json({ error: 'Failed to send OTP. WhatsApp not ready yet. Scan QR code first.' });
       return;
     }
 
     res.json({
-      message: 'OTP sent via SMS',
+      message: 'OTP sent via WhatsApp',
       expiresIn: 600,
     });
   } catch (error) {
@@ -237,15 +237,15 @@ router.post('/forgot-pin', async (req: AuthRequest, res: Response): Promise<void
     );
 
     try {
-      await sendOtpViaFast2SMS(phone, otp);
+      await sendWhatsAppOtp(phone, otp);
     } catch (waErr: any) {
-      console.error('[OTP] Fast2SMS delivery failed:', waErr.message);
-      res.status(503).json({ error: 'Failed to send OTP via SMS. Please try again in a moment.' });
+      console.error('[OTP] WhatsApp delivery failed:', waErr.message);
+      res.status(503).json({ error: 'Failed to send OTP. WhatsApp not ready yet. Scan QR code first.' });
       return;
     }
 
     res.json({
-      message: 'OTP sent via SMS',
+      message: 'OTP sent via WhatsApp',
       expiresIn: 600,
     });
   } catch (error) {
