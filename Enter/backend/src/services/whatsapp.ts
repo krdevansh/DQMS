@@ -1,5 +1,6 @@
 import path from 'path';
-import { makeWASocket, useMultiFileAuthState, DisconnectReason } from '@whiskeysockets/baileys';
+import pino from 'pino';
+import { makeWASocket, useMultiFileAuthState, DisconnectReason, Browsers } from '@whiskeysockets/baileys';
 import QRCode from 'qrcode';
 
 const SESSION_DIR = path.resolve(__dirname, '../../whatsapp-session');
@@ -8,6 +9,7 @@ let sock: any = null;
 let isReady = false;
 let latestQr: string | null = null;
 let initStarted = false;
+let reconnectAttempts = 0;
 
 export function isClientReady(): boolean {
   return isReady;
@@ -17,20 +19,35 @@ export function getQr(): string | null {
   return latestQr;
 }
 
+function getReconnectDelay(): number {
+  reconnectAttempts++;
+  const base = Math.min(5000 * Math.pow(2, reconnectAttempts - 1), 120000);
+  const jitter = Math.floor(Math.random() * 2000);
+  return base + jitter;
+}
+
+function resetReconnectAttempts(): void {
+  reconnectAttempts = 0;
+}
+
 export async function initWhatsApp(): Promise<void> {
   if (initStarted) return;
   initStarted = true;
+  resetReconnectAttempts();
 
   try {
     console.log(`WhatsApp session dir: ${SESSION_DIR}`);
     const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
 
+    const logger = pino({ level: 'warn' });
+
     sock = makeWASocket({
       auth: state,
       printQRInTerminal: false,
-      browser: ['DQMS', 'Chrome', '1.0.0'],
+      browser: Browsers.windows('Chrome'),
       syncFullHistory: false,
       markOnlineOnConnect: false,
+      logger,
     });
 
     sock.ev.on('connection.update', async (update: any) => {
@@ -48,18 +65,29 @@ export async function initWhatsApp(): Promise<void> {
       if (connection === 'open') {
         isReady = true;
         latestQr = null;
+        resetReconnectAttempts();
         console.log('✓ WhatsApp client is ready and connected!');
       }
 
       if (connection === 'close') {
         isReady = false;
-        const loggedOut = (lastDisconnect?.error as any)?.output?.statusCode === DisconnectReason.loggedOut;
+        const statusCode = (lastDisconnect?.error as any)?.output?.statusCode;
+        const loggedOut = statusCode === DisconnectReason.loggedOut;
+        const blocked = statusCode === DisconnectReason.badSession;
+
+        console.log(`WhatsApp disconnected (reason: ${statusCode}). Reconnect attempt #${reconnectAttempts + 1}`);
+
         if (loggedOut) {
           console.log('WhatsApp logged out. Delete the whatsapp-session folder and restart.');
-        } else {
-          console.log('WhatsApp disconnected, reconnecting...');
           initStarted = false;
-          initWhatsApp();
+        } else if (blocked) {
+          console.log('WhatsApp session is bad. Delete the whatsapp-session folder and restart.');
+          initStarted = false;
+        } else {
+          const delay = getReconnectDelay();
+          console.log(`Reconnecting in ${Math.round(delay / 1000)}s...`);
+          initStarted = false;
+          setTimeout(() => initWhatsApp(), delay);
         }
       }
     });
