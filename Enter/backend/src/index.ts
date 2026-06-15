@@ -79,11 +79,11 @@ app.get('/api/health', (_req, res) => {
 app.get('/api/whatsapp-qr', (_req, res) => {
   const qr = getQr();
   if (isClientReady()) {
-    res.json({ ready: true, message: 'WhatsApp is already connected' });
+    res.send(`<html><body style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;background:#111;color:#fff"><h2>✅ WhatsApp is already connected</h2></body></html>`);
   } else if (qr) {
-    res.json({ ready: false, qr });
+    res.send(`<html><body style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;background:#111;color:#fff"><h2 style="margin-bottom:20px">Scan this QR with WhatsApp</h2><p style="margin-bottom:20px;color:#888">Open WhatsApp → Menu → Linked Devices → Link a Device</p><img src="${qr}" style="width:300px;height:300px;border-radius:12px"/></body></html>`);
   } else {
-    res.json({ ready: false, message: 'QR code not yet generated. Try again in a moment.' });
+    res.send(`<html><body style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;background:#111;color:#fff"><h2>⏳ QR code not yet generated. Refresh in a moment...</h2></body></html>`);
   }
 });
 
