@@ -1,6 +1,6 @@
 import path from 'path';
 import pino from 'pino';
-import { makeWASocket, useMultiFileAuthState, DisconnectReason, Browsers } from '@whiskeysockets/baileys';
+import { makeWASocket, useMultiFileAuthState, DisconnectReason, Browsers, fetchLatestWaWebVersion } from '@whiskeysockets/baileys';
 import QRCode from 'qrcode';
 
 const SESSION_DIR = path.resolve(__dirname, '../../whatsapp-session');
@@ -40,12 +40,17 @@ export async function initWhatsApp(): Promise<void> {
     const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
 
     const logger = pino({ level: 'warn' });
+    const { version, isLatest } = await fetchLatestWaWebVersion({});
+    if (!isLatest) {
+      console.warn('Could not fetch latest WA version, using baileys default');
+    }
+    console.log(`WhatsApp Web version: 2.3000.${version[2]}`);
 
     sock = makeWASocket({
       auth: state,
       printQRInTerminal: false,
       browser: Browsers.windows('Chrome'),
-      version: [2, 3000, 1041431076],
+      version,
       syncFullHistory: false,
       markOnlineOnConnect: false,
       logger,
