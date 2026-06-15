@@ -40,8 +40,13 @@ export async function sendOtpViaWhatsApp(phone: string, otp: string): Promise<vo
 
   const data = await response.json() as any;
 
+  // Log full response so we can debug in Render logs
+  console.log('[Fast2SMS] Response:', JSON.stringify(data));
+
   if (!response.ok || data?.return === false) {
-    const detail = data?.message?.join(', ') ?? JSON.stringify(data);
+    const detail = Array.isArray(data?.message)
+      ? data.message.join(', ')
+      : JSON.stringify(data);
     throw new Error(`Fast2SMS error: ${detail}`);
   }
 
