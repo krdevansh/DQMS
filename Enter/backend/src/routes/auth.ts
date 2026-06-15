@@ -22,15 +22,19 @@ const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
 // ─── Register: Send OTP ────────────────────────────────────────────────────────
 router.post('/send-register-otp', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { phone } = req.body as { phone: string };
+    const { phone, role } = req.body as { phone: string; role?: string };
     if (!phone) {
       res.status(400).json({ error: 'Phone number is required' });
       return;
     }
+    if (!role) {
+      res.status(400).json({ error: 'Role is required' });
+      return;
+    }
 
-    const existing = await User.findOne({ phone });
+    const existing = await User.findOne({ phone, role });
     if (existing) {
-      res.status(409).json({ error: 'Phone number already registered' });
+      res.status(409).json({ error: 'Phone number already registered for this account type' });
       return;
     }
 
@@ -117,9 +121,9 @@ router.post('/register', async (req: AuthRequest, res: Response): Promise<void> 
       return;
     }
 
-    const existing = await User.findOne({ phone });
+    const existing = await User.findOne({ phone, role });
     if (existing) {
-      res.status(409).json({ error: 'Phone number already registered' });
+      res.status(409).json({ error: 'Phone number already registered for this account type' });
       return;
     }
 
@@ -156,7 +160,7 @@ router.post('/register', async (req: AuthRequest, res: Response): Promise<void> 
   } catch (error: any) {
     console.error('Register error:', error);
     if (error.code === 11000) {
-      res.status(409).json({ error: 'Phone number already registered' });
+      res.status(409).json({ error: 'Phone number already registered for this account type' });
       return;
     }
     if (error.name === 'ValidationError') {
@@ -215,15 +219,19 @@ router.post('/login', async (req: AuthRequest, res: Response): Promise<void> => 
 // ─── Forgot PIN: Send OTP ─────────────────────────────────────────────────────
 router.post('/forgot-pin', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { phone } = req.body as { phone: string };
+    const { phone, role } = req.body as { phone: string; role?: string };
     if (!phone) {
       res.status(400).json({ error: 'Phone number is required' });
       return;
     }
+    if (!role) {
+      res.status(400).json({ error: 'Account type is required' });
+      return;
+    }
 
-    const user = await User.findOne({ phone });
+    const user = await User.findOne({ phone, role });
     if (!user) {
-      res.status(404).json({ error: 'No account found with this phone number' });
+      res.status(404).json({ error: 'No account found with this phone number for this account type' });
       return;
     }
 
@@ -353,7 +361,7 @@ router.post('/firebase-verify', async (req: AuthRequest, res: Response): Promise
     const { phone } = await verifyPhoneToken(idToken);
 
     if (purpose === 'register') {
-      const existing = await User.findOne({ phone });
+      const existing = await User.findOne({ phone, role: 'customer' });
       if (existing) {
         res.status(409).json({ error: 'Phone number already registered' });
         return;

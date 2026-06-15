@@ -75,7 +75,7 @@ function RegisterForm() {
 
     const { data, error } = await api.post<{ message: string; expiresIn: number; otp?: string }>(
       '/auth/send-register-otp',
-      { phone: formData.phone }
+      { phone: formData.phone, role }
     );
 
     setLoading(false);
@@ -99,6 +99,7 @@ function RegisterForm() {
     setErrorMsg('');
     const { data, error } = await api.post<{ message: string }>('/auth/send-register-otp', {
       phone: formData.phone,
+      role,
     });
     setLoading(false);
     if (error) { setErrorMsg(error); return; }

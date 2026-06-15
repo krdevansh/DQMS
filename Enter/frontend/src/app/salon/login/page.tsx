@@ -13,7 +13,7 @@ import { api, saveToken, saveUser } from '@/lib/api';
 // ─── Forgot PIN inline flow ───────────────────────────────────────────────────
 type ForgotStep = 'phone' | 'otp' | 'newpin' | 'done';
 
-function ForgotPinFlow({ onCancel }: { onCancel: () => void }) {
+function ForgotPinFlow({ onCancel, role }: { onCancel: () => void; role: string }) {
   const [step, setStep] = useState<ForgotStep>('phone');
   const [phone, setPhone] = useState('+91 ');
   const [otp, setOtp] = useState('');
@@ -47,7 +47,7 @@ function ForgotPinFlow({ onCancel }: { onCancel: () => void }) {
     if (phone.length !== 14) { setError('Enter a valid 10-digit phone number.'); return; }
     setLoading(true); setError('');
     const { data, error: apiErr } = await api.post<{ message: string; expiresIn: number; otp?: string }>(
-      '/auth/forgot-pin', { phone }
+      '/auth/forgot-pin', { phone, role }
     );
     setLoading(false);
     if (apiErr) { setError(apiErr); return; }
@@ -340,7 +340,7 @@ function LoginForm() {
     >
       <AnimatePresence mode="wait">
         {showForgot ? (
-          <ForgotPinFlow key="forgot" onCancel={() => setShowForgot(false)} />
+          <ForgotPinFlow key="forgot" onCancel={() => setShowForgot(false)} role={role} />
         ) : (
           <motion.div
             key="login"

@@ -19,7 +19,7 @@ const UserSchema = new Schema<IUser>(
     name: { type: String, trim: true },
     salonName: { type: String, trim: true },
     email: { type: String, trim: true, lowercase: true },
-    phone: { type: String, required: true, unique: true },
+    phone: { type: String, required: true },
     pin: { type: String, required: true },
     role: { type: String, enum: ['customer', 'salon', 'hospital_admin', 'doctor', 'patient'], required: true },
     faceShape: { type: String },
@@ -28,4 +28,7 @@ const UserSchema = new Schema<IUser>(
   },
   { timestamps: true }
 );
+
+UserSchema.index({ phone: 1, role: 1 }, { unique: true });
+
 export const User = mongoose.model<IUser>('User', UserSchema);
