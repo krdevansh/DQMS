@@ -6,7 +6,7 @@ import { Otp } from '../models/Otp';
 import { env } from '../config/env';
 import { authMiddleware } from '../middleware/auth';
 import { AuthRequest, RegisterBody, LoginBody } from '../types';
-import { sendWhatsAppOtp, waitForReady } from '../services/whatsapp';
+import { sendOtpViaWhatsApp } from '../services/whatsappCloudApi';
 import { verifyPhoneToken, isFirebaseConfigured } from '../services/firebase';
 
 const router = Router();
@@ -45,18 +45,16 @@ router.post('/send-register-otp', async (req: AuthRequest, res: Response): Promi
     );
 
     try {
-      const ready = await waitForReady(20000);
-      if (ready) {
-        await sendWhatsAppOtp(phone, otp);
-      }
+      await sendOtpViaWhatsApp(phone, otp);
     } catch (waErr: any) {
-      console.error('WhatsApp OTP error:', waErr.message);
+      console.error('[OTP] WhatsApp delivery failed:', waErr.message);
+      res.status(503).json({ error: 'Failed to send OTP. Please try again in a moment.' });
+      return;
     }
 
     res.json({
-      message: env.SHOW_OTP ? `OTP: ${otp}` : 'OTP sent to your WhatsApp',
+      message: 'OTP sent to your WhatsApp',
       expiresIn: 600,
-      ...(env.SHOW_OTP ? { otp } : {}),
     });
   } catch (error) {
     console.error('Send register OTP error:', error);
@@ -239,18 +237,16 @@ router.post('/forgot-pin', async (req: AuthRequest, res: Response): Promise<void
     );
 
     try {
-      const ready = await waitForReady(20000);
-      if (ready) {
-        await sendWhatsAppOtp(phone, otp);
-      }
+      await sendOtpViaWhatsApp(phone, otp);
     } catch (waErr: any) {
-      console.error('WhatsApp OTP error:', waErr.message);
+      console.error('[OTP] WhatsApp delivery failed:', waErr.message);
+      res.status(503).json({ error: 'Failed to send OTP. Please try again in a moment.' });
+      return;
     }
 
     res.json({
-      message: env.SHOW_OTP ? `OTP: ${otp}` : 'OTP sent to your WhatsApp',
+      message: 'OTP sent to your WhatsApp',
       expiresIn: 600,
-      ...(env.SHOW_OTP ? { otp } : {}),
     });
   } catch (error) {
     console.error('Forgot PIN error:', error);

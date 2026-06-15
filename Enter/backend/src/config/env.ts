@@ -18,6 +18,7 @@ export const env = {
   TWILIO_PHONE_NUMBER: process.env.TWILIO_PHONE_NUMBER || '',
   FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID || '',
   FIREBASE_SERVICE_ACCOUNT_KEY: process.env.FIREBASE_SERVICE_ACCOUNT_KEY || '',
-  SHOW_OTP: process.env.SHOW_OTP === 'true', // set SHOW_OTP=true on Render for testing
+  // Fast2SMS — free Indian SMS OTP delivery
+  FAST2SMS_API_KEY: process.env.FAST2SMS_API_KEY || '',
 };
 
