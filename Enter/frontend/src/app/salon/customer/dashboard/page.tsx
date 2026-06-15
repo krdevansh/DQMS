@@ -25,8 +25,8 @@ import {
   Wallet,
   Bell,
 } from 'lucide-react';
-import { Customer, HaircutHistoryItem, HairstyleSuggestion } from '@/types';
-import { getCustomerProfile, getHaircutHistory } from '@/lib/storage';
+import { Customer, HairstyleSuggestion } from '@/types';
+import { getCustomerProfile } from '@/lib/storage';
 import { api, clearToken, clearUser, getToken } from '@/lib/api';
 import { getSuggestionsForProfile, faceShapeLabels } from '@/data/hairstyle-suggestions';
 import { useLanguage } from '@/lib/language-context';
@@ -34,7 +34,6 @@ import { useLanguage } from '@/lib/language-context';
 export default function CustomerDashboardPage() {
   const { t } = useLanguage();
   const [profile, setProfile] = useState<Customer | null>(null);
-  const [history, setHistory] = useState<HaircutHistoryItem[]>([]);
   const [suggestions, setSuggestions] = useState<HairstyleSuggestion[]>([]);
   const [selectedSuggestion, setSelectedSuggestion] = useState<string | null>(null);
   const [activeQueue, setActiveQueue] = useState<any[]>([]);
@@ -76,7 +75,6 @@ export default function CustomerDashboardPage() {
   useEffect(() => {
     const p = getCustomerProfile();
     setProfile(p);
-    setHistory(getHaircutHistory());
     if (p) {
       setSuggestions(getSuggestionsForProfile(p.faceShape, p.gender, p.age));
     }
@@ -204,7 +202,7 @@ export default function CustomerDashboardPage() {
     return d.getMonth() === new Date().getMonth() && d.getFullYear() === new Date().getFullYear();
   }).length;
 
-  const latestHistory = history.slice(0, 10);
+  const latestHistory = completedEntries.slice(0, 10);
 
   const stats = [
     {
@@ -451,98 +449,6 @@ export default function CustomerDashboardPage() {
           </motion.div>
         )}
 
-        {queueHistory.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-6"
-          >
-            <h2 className="text-lg font-bold text-[#F5F5F5] mb-3 flex items-center gap-2">
-              <Clock className="w-5 h-5 text-[#666]" />
-              {t('customer.queueHistory')}
-              <span className="ml-auto text-xs text-[#666] font-normal">{queueHistory.length} visits</span>
-            </h2>
-            <div className="space-y-3">
-              {queueHistory.map((entry: any) => {
-                const isLeft = entry.status === 'cancelled';
-                const salon = entry.salonId;
-                const salonTypeInfo = {
-                  male: { label: 'Barbershop', emoji: '✂️', color: 'bg-blue-500/10 text-blue-300 border-blue-500/20' },
-                  female: { label: 'Beauty Parlour', emoji: '💅', color: 'bg-pink-500/10 text-pink-300 border-pink-500/20' },
-                  unisex: { label: 'Unisex Salon', emoji: '✨', color: 'bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/20' },
-                }[salon?.salonType as string] || { label: 'Salon', emoji: '✂️', color: 'bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/20' };
-                return (
-                <motion.div
-                  key={entry._id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={`bg-[#161616] border rounded-2xl overflow-hidden transition-colors ${
-                    isLeft ? 'border-[#2a2a2a] opacity-75' : 'border-[#2a2a2a] hover:border-[#D4AF37]/20'
-                  }`}
-                >
-                  {/* Salon Profile Header */}
-                  <div className="flex items-center gap-3 p-3 border-b border-white/5">
-                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-[#0D0D0D] flex-shrink-0 border border-white/5">
-                      {salon?.image ? (
-                        <img src={salon.image} alt={salon?.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Store className="w-6 h-6 text-[#444]" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-[#F5F5F5] text-sm font-semibold truncate">{salon?.name || t('customer.salon')}</p>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium flex-shrink-0 ${salonTypeInfo.color}`}>
-                          {salonTypeInfo.emoji} {salonTypeInfo.label}
-                        </span>
-                      </div>
-                      <p className="text-[#555] text-xs truncate mt-0.5">{salon?.city || ''}</p>
-                    </div>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full flex-shrink-0 font-medium ${
-                      isLeft ? 'text-[#666] bg-[#1A1A2E] border border-[#333]' : 'text-green-400 bg-green-500/10 border border-green-500/20'
-                    }`}>
-                      {isLeft ? t('customer.left') : t('customer.completed')}
-                    </span>
-                  </div>
-                  {/* Ticket Info Row */}
-                  <div className="flex items-center gap-3 px-3 py-2.5">
-                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                      isLeft ? 'bg-[#2a2a2a]' : 'bg-green-500/10'
-                    }`}>
-                      <span className={`text-sm font-bold ${
-                        isLeft ? 'text-[#555] line-through' : 'text-green-400'
-                      }`}>#{entry.ticket}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[#A0A0A0] text-xs">
-                        {isLeft ? t('customer.leftQueue') : t('customer.serviceCompleted')}
-                        {entry.customerName && entry.customerName !== 'Guest' && <span className="text-[#666]"> · {entry.customerName}</span>}
-                      </p>
-                      {entry.completedAt && !isLeft && (
-                        <p className="text-[#555] text-[10px] mt-0.5">
-                          {new Date(entry.completedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        </p>
-                      )}
-                    </div>
-                    {salon?.slug && (
-                      <Link
-                        href={`/salon/customer/${salon.slug}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-[10px] px-2 py-1 rounded-lg bg-[#1A1A2E] border border-white/5 text-[#A0A0A0] hover:text-[#D4AF37] hover:border-[#D4AF37]/20 transition-colors flex-shrink-0"
-                      >
-                        Visit again
-                      </Link>
-                    )}
-                  </div>
-                </motion.div>
-                );
-              })}
-            </div>
-          </motion.div>
-        )}
-
         {!profile.faceShape || !profile.gender ? (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -669,7 +575,7 @@ export default function CustomerDashboardPage() {
             )}
           </div>
 
-          {history.length === 0 ? (
+          {completedEntries.length === 0 ? (
             <div className="salon-glass-card rounded-2xl p-8 text-center">
               <Scissors className="w-12 h-12 text-[#333] mx-auto mb-3" />
               <p className="text-[#A0A0A0]">{t('customer.noHistory')}</p>
@@ -685,9 +591,11 @@ export default function CustomerDashboardPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {latestHistory.map((item) => (
+              {completedEntries.slice(0, 10).map((entry: any) => {
+                const salon = entry.salonId;
+                return (
                 <div
-                  key={item.id}
+                  key={entry._id}
                   className="bg-[#161616] border border-[#333] rounded-xl p-4 flex items-center justify-between hover:border-[#D4AF37]/20 transition-colors"
                 >
                   <div className="flex items-center gap-4">
@@ -695,26 +603,22 @@ export default function CustomerDashboardPage() {
                       <Scissors className="w-5 h-5 text-[#D4AF37]" />
                     </div>
                     <div>
-                      <p className="text-[#F5F5F5] font-medium">{item.serviceName}</p>
+                      <p className="text-[#F5F5F5] font-medium">{entry.serviceName}</p>
                       <p className="text-[#A0A0A0] text-xs flex items-center gap-2">
                         <MapPin className="w-3 h-3" />
-                        {item.salonName}
-                        {item.stylistName && (
-                          <>
-                            <span className="text-[#333]">|</span>
-                            <Star className="w-3 h-3" />
-                            {item.stylistName}
-                          </>
-                        )}
+                        {salon?.name || t('customer.salon')}
                       </p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-[#D4AF37] font-bold">₹{item.price}</p>
-                    <p className="text-[#666] text-xs">{item.date}</p>
+                    <p className="text-[#D4AF37] font-bold">₹{entry.price}</p>
+                    {entry.completedAt && (
+                      <p className="text-[#666] text-xs">{new Date(entry.completedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                    )}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </motion.div>

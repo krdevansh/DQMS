@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User';
 import { Otp } from '../models/Otp';
+import { Wallet } from '../models/Wallet';
 import { env } from '../config/env';
 import { authMiddleware } from '../middleware/auth';
 import { AuthRequest, RegisterBody, LoginBody } from '../types';
@@ -144,6 +145,24 @@ router.post('/register', async (req: AuthRequest, res: Response): Promise<void> 
     });
 
     await user.save();
+
+    // Give 3 free coins to new customers
+    if (role === 'customer') {
+      await Wallet.findOneAndUpdate(
+        { userId: user._id },
+        {
+          $setOnInsert: { balance: 3, transactions: [{
+            amount: 3,
+            type: 'credit',
+            status: 'approved',
+            description: 'Welcome bonus — 3 free coins',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          }] },
+        },
+        { upsert: true }
+      );
+    }
 
     // Clean up OTP after successful registration
     await Otp.deleteOne({ phone, type: 'register' });

@@ -50,7 +50,7 @@ router.get('/mine', authMiddleware, async (req: AuthRequest, res: Response): Pro
 // POST /queue/join - Join queue (self or friend, max 3 per user per salon)
 router.post('/join', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { salonId, serviceName, price, customerName, customerPhone } = req.body;
+    const { salonId, services, serviceName, price, customerName, customerPhone } = req.body;
 
     if (!salonId) {
       res.status(400).json({ error: 'Salon ID is required' });
@@ -101,6 +101,12 @@ router.post('/join', authMiddleware, async (req: AuthRequest, res: Response): Pr
     const ticketNum = todayCount + 1;
     const ticket = `${ticketLetter}${String(ticketNum).padStart(2, '0')}`;
 
+    const entryServices = Array.isArray(services) && services.length > 0
+      ? services.map((s: any) => ({ name: s.name, price: s.price, completed: false }))
+      : serviceName
+        ? [{ name: serviceName, price: price || 0, completed: false }]
+        : [{ name: 'Walk-in', price: 0, completed: false }];
+
     const entry = new QueueEntry({
       salonId,
       customerId: req.user!.userId,
@@ -108,8 +114,10 @@ router.post('/join', authMiddleware, async (req: AuthRequest, res: Response): Pr
       customerPhone: customerPhone || undefined,
       ticket,
       position: waitingCount + 1,
-      serviceName: serviceName || 'Walk-in',
-      price: price || 0,
+      serviceName: entryServices.map((s: any) => s.name).join(', '),
+      price: entryServices.reduce((sum: number, s: any) => sum + s.price, 0),
+      services: entryServices,
+      totalPrice: entryServices.reduce((sum: number, s: any) => sum + s.price, 0),
       status: 'waiting',
     });
 
@@ -189,14 +197,35 @@ router.get('/stats/:salonId', authMiddleware, async (req: AuthRequest, res: Resp
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfYear = new Date(now.getFullYear(), 0, 1);
 
-    const [today, month, year, all] = await Promise.all([
-      QueueEntry.countDocuments({ salonId: req.params.salonId, status: 'completed', completedAt: { $gte: startOfDay } }),
-      QueueEntry.countDocuments({ salonId: req.params.salonId, status: 'completed', completedAt: { $gte: startOfMonth } }),
-      QueueEntry.countDocuments({ salonId: req.params.salonId, status: 'completed', completedAt: { $gte: startOfYear } }),
-      QueueEntry.countDocuments({ salonId: req.params.salonId, status: 'completed' }),
+    const [todayResult, monthResult, yearResult, allResult] = await Promise.all([
+      QueueEntry.aggregate([
+        { $match: { salonId: new mongoose.Types.ObjectId(req.params.salonId), status: 'completed', completedAt: { $gte: startOfDay } } },
+        { $group: { _id: null, count: { $sum: 1 }, earnings: { $sum: '$totalPrice' } } },
+      ]),
+      QueueEntry.aggregate([
+        { $match: { salonId: new mongoose.Types.ObjectId(req.params.salonId), status: 'completed', completedAt: { $gte: startOfMonth } } },
+        { $group: { _id: null, count: { $sum: 1 }, earnings: { $sum: '$totalPrice' } } },
+      ]),
+      QueueEntry.aggregate([
+        { $match: { salonId: new mongoose.Types.ObjectId(req.params.salonId), status: 'completed', completedAt: { $gte: startOfYear } } },
+        { $group: { _id: null, count: { $sum: 1 }, earnings: { $sum: '$totalPrice' } } },
+      ]),
+      QueueEntry.aggregate([
+        { $match: { salonId: new mongoose.Types.ObjectId(req.params.salonId), status: 'completed' } },
+        { $group: { _id: null, count: { $sum: 1 }, earnings: { $sum: '$totalPrice' } } },
+      ]),
     ]);
 
-    res.json({ today, month, year, all });
+    res.json({
+      today: todayResult[0]?.count || 0,
+      month: monthResult[0]?.count || 0,
+      year: yearResult[0]?.count || 0,
+      all: allResult[0]?.count || 0,
+      todayEarnings: todayResult[0]?.earnings || 0,
+      monthEarnings: monthResult[0]?.earnings || 0,
+      yearEarnings: yearResult[0]?.earnings || 0,
+      allEarnings: allResult[0]?.earnings || 0,
+    });
   } catch (error) {
     console.error('Get salon stats error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -214,18 +243,21 @@ router.get('/:salonId', async (req: AuthRequest, res: Response): Promise<void> =
     const serving = entries.find((e) => e.status === 'serving');
     const waiting = entries.filter((e) => e.status === 'waiting');
 
+    const mapEntry = (e: any) => ({
+      _id: e._id,
+      ticket: e.ticket,
+      customerName: e.customerName,
+      position: e.position,
+      serviceName: e.serviceName,
+      price: e.price,
+      services: e.services || [],
+      totalPrice: e.totalPrice || e.price,
+      skipNote: e.skipNote,
+    });
+
     res.json({
-      serving: serving
-        ? { _id: serving._id, ticket: serving.ticket, customerName: serving.customerName, serviceName: serving.serviceName }
-        : null,
-      waiting: waiting.map((e) => ({
-        _id: e._id,
-        ticket: e.ticket,
-        customerName: e.customerName,
-        position: e.position,
-        serviceName: e.serviceName,
-        skipNote: e.skipNote,
-      })),
+      serving: serving ? mapEntry(serving) : null,
+      waiting: waiting.map(mapEntry),
       totalWaiting: waiting.length,
     });
   } catch (error) {
@@ -261,12 +293,39 @@ router.patch('/:id/serve', authMiddleware, async (req: AuthRequest, res: Respons
   }
 });
 
-// PATCH /queue/:id/complete - Complete current serving
+// PATCH /queue/:id/tick-service/:index - Toggle a single service as completed
+router.patch('/:id/tick-service/:index', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const check = await checkOwner(req, req.params.id);
+    if (!check.valid) { res.status(check.error!.status).json({ error: check.error!.message }); return; }
+    const entry = check.entry!;
+    const index = parseInt(req.params.index, 10);
+
+    if (isNaN(index) || index < 0 || index >= (entry.services || []).length) {
+      res.status(400).json({ error: 'Invalid service index' });
+      return;
+    }
+
+    entry.services[index].completed = !entry.services[index].completed;
+    await entry.save();
+
+    res.json({ message: 'Service toggled', queueEntry: entry });
+  } catch (error) {
+    console.error('Tick service error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// PATCH /queue/:id/complete - Complete current serving (mark all services completed if not already)
 router.patch('/:id/complete', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const check = await checkOwner(req, req.params.id);
     if (!check.valid) { res.status(check.error!.status).json({ error: check.error!.message }); return; }
     const entry = check.entry!;
+
+    if (entry.services && entry.services.length > 0) {
+      entry.services.forEach((s: any) => { s.completed = true; });
+    }
 
     entry.status = 'completed';
     entry.completedAt = new Date();

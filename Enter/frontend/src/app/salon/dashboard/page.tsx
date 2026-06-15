@@ -25,6 +25,12 @@ const DynamicMap = dynamic(() => import('@/components/MapComponent'), {
   ),
 });
 
+interface ServiceItem {
+  name: string;
+  price: number;
+  completed: boolean;
+}
+
 interface QueueItem {
   _id: string;
   ticket: string;
@@ -33,6 +39,8 @@ interface QueueItem {
   serviceName: string;
   price: number;
   status: string;
+  services?: ServiceItem[];
+  totalPrice?: number;
   skipNote?: string;
 }
 
@@ -76,7 +84,7 @@ function SalonDashboardContent() {
   const [noSalon, setNoSalon] = useState(false);
   const [loading, setLoading] = useState(true);
   const [queueData, setQueueData] = useState<{ serving: QueueItem | null; waiting: QueueItem[]; totalWaiting: number } | null>(null);
-  const [stats, setStats] = useState<{ today: number; month: number; year: number; all: number } | null>(null);
+  const [stats, setStats] = useState<any>(null);
   const [toast, setToast] = useState('');
   const [trialExpired, setTrialExpired] = useState(false);
 
@@ -118,7 +126,7 @@ function SalonDashboardContent() {
   };
 
   const fetchStats = async (salonId: string) => {
-    const { data } = await api.get<{ today: number; month: number; year: number; all: number }>(`/queue/stats/${salonId}`);
+    const { data } = await api.get<any>(`/queue/stats/${salonId}`);
     if (data) setStats(data);
   };
 
@@ -330,7 +338,7 @@ function CreateSalonForm({ onCreated, showToast }: {
 function DashboardSection({ salon, queueData, stats, toggleOpen, fetchQueue, trialExpired }: {
   salon: SalonData;
   queueData: { serving: QueueItem | null; waiting: QueueItem[]; totalWaiting: number } | null;
-  stats: { today: number; month: number; year: number; all: number } | null;
+  stats: any;
   toggleOpen: () => void;
   fetchQueue: () => void;
   trialExpired?: boolean;
@@ -338,6 +346,9 @@ function DashboardSection({ salon, queueData, stats, toggleOpen, fetchQueue, tri
   const { t } = useLanguage();
   const [actionLoading, setActionLoading] = useState('');
   const [confirmAction, setConfirmAction] = useState<{ type: string; id: string } | null>(null);
+
+  const serviceCompletedCount = (queueData?.serving?.services || [])
+    .filter((s: ServiceItem) => s.completed).length;
 
   const executeAction = async (type: string) => {
     if (!queueData?.serving || !confirmAction) return;
@@ -352,8 +363,15 @@ function DashboardSection({ salon, queueData, stats, toggleOpen, fetchQueue, tri
     fetchQueue();
   };
 
+  const handleTickService = async (index: number) => {
+    if (!queueData?.serving) return;
+    await api.patch(`/queue/${queueData.serving._id}/tick-service/${index}`);
+    fetchQueue();
+  };
+
   const handleComplete = () => {
     if (!queueData?.serving) return;
+    if (serviceCompletedCount === 0) return;
     setConfirmAction({ type: 'complete', id: queueData.serving._id });
   };
 
@@ -409,22 +427,35 @@ function DashboardSection({ salon, queueData, stats, toggleOpen, fetchQueue, tri
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6">
-        {[
-          { label: t('queue.inQueue'), value: queueData?.totalWaiting ?? 0, icon: Users, color: 'from-amber-500 to-orange-600' },
-          { label: t('dashboard.today'), value: stats?.today ?? '—', icon: Calendar, color: 'from-emerald-500 to-teal-600' },
-        ].map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <div key={stat.label} className="bg-[#111118] border border-white/5 rounded-2xl p-4">
-              <div className={`w-9 h-9 bg-gradient-to-br ${stat.color} rounded-xl flex items-center justify-center mb-3`}>
-                <Icon className="w-4 h-4 text-white" />
-              </div>
-              <p className="text-2xl font-bold text-white">{stat.value}</p>
-              <p className="text-xs text-slate-500 mt-0.5">{stat.label}</p>
-            </div>
-          );
-        })}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
+        <div className="bg-[#111118] border border-white/5 rounded-2xl p-4">
+          <div className="w-9 h-9 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center mb-3">
+            <Users className="w-4 h-4 text-white" />
+          </div>
+          <p className="text-2xl font-bold text-white">{queueData?.totalWaiting ?? 0}</p>
+          <p className="text-xs text-slate-500 mt-0.5">{t('queue.inQueue')}</p>
+        </div>
+        <div className="bg-[#111118] border border-white/5 rounded-2xl p-4">
+          <div className="w-9 h-9 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center mb-3">
+            <Calendar className="w-4 h-4 text-white" />
+          </div>
+          <p className="text-2xl font-bold text-white">{stats?.today ?? '—'}</p>
+          <p className="text-xs text-slate-500 mt-0.5">{t('dashboard.today')}</p>
+        </div>
+        <div className="bg-[#111118] border border-white/5 rounded-2xl p-4">
+          <div className="w-9 h-9 bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl flex items-center justify-center mb-3">
+            <TrendingUp className="w-4 h-4 text-white" />
+          </div>
+          <p className="text-lg font-bold text-white">₹{stats?.todayEarnings ?? 0}</p>
+          <p className="text-xs text-slate-500 mt-0.5">{t('dashboard.todayEarnings')}</p>
+        </div>
+        <div className="bg-[#111118] border border-white/5 rounded-2xl p-4">
+          <div className="w-9 h-9 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center mb-3">
+            <TrendingUp className="w-4 h-4 text-white" />
+          </div>
+          <p className="text-lg font-bold text-white">₹{stats?.monthEarnings ?? 0}</p>
+          <p className="text-xs text-slate-500 mt-0.5">{t('dashboard.monthEarnings')}</p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
@@ -440,12 +471,40 @@ function DashboardSection({ salon, queueData, stats, toggleOpen, fetchQueue, tri
                 <span className="text-xs bg-green-500/10 text-green-400 px-2 py-0.5 rounded-full">{t('dashboard.inProgress')}</span>
               </div>
               <p className="text-white font-semibold text-base sm:text-lg break-words">{queueData.serving.customerName}</p>
-              <p className="text-[#A0A0A0] text-sm mb-4">{queueData.serving.serviceName}</p>
+
+              {/* Services list with tick marks */}
+              {(queueData.serving.services && queueData.serving.services.length > 0) ? (
+                <div className="space-y-1.5 my-3">
+                  {queueData.serving.services.map((svc: ServiceItem, idx: number) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleTickService(idx)}
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl border text-left transition-all ${
+                        svc.completed
+                          ? 'bg-green-500/10 border-green-500/30 text-green-400'
+                          : 'bg-[#1A1A2E] border-white/5 text-[#A0A0A0] hover:border-white/15'
+                      }`}
+                    >
+                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                        svc.completed ? 'bg-green-500 border-green-500' : 'border-[#444]'
+                      }`}>
+                        {svc.completed && <CheckCircle className="w-4 h-4 text-white" />}
+                      </div>
+                      <span className="text-sm flex-1">{svc.name}</span>
+                      <span className="text-xs font-semibold">₹{svc.price}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[#A0A0A0] text-sm mb-4">{queueData.serving.serviceName}</p>
+              )}
+
               <div className="flex gap-2 sm:gap-3">
                 <button
                   onClick={handleComplete}
-                  disabled={actionLoading !== ''}
+                  disabled={actionLoading !== '' || serviceCompletedCount === 0}
                   className="flex-1 px-3 py-3 sm:py-2 bg-green-500/20 border border-green-500/30 text-green-400 rounded-xl text-sm font-semibold hover:bg-green-500/30 transition-colors disabled:opacity-50"
+                  title={serviceCompletedCount === 0 ? 'Tick at least one service first' : ''}
                 >
                   {actionLoading === 'complete' ? '...' : t('queue.complete')}
                 </button>
@@ -790,7 +849,7 @@ function EditProfileSection({ salon, onUpdate }: {
   );
 }
 
-function EarningsSection({ stats }: { stats: { today: number; month: number; year: number; all: number } | null }) {
+function EarningsSection({ stats }: { stats: any | null }) {
   const { t } = useLanguage();
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
@@ -800,12 +859,18 @@ function EarningsSection({ stats }: { stats: { today: number; month: number; yea
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        {[{ label: t('dashboard.today'), value: '—' }, { label: t('dashboard.thisWeek'), value: '—' }, { label: t('dashboard.thisMonth'), value: '—' }].map((item) => (
-          <div key={item.label} className="bg-[#111118] border border-white/5 rounded-2xl p-5">
-            <p className="text-sm text-[#A0A0A0] mb-1">{item.label}</p>
-            <p className="text-3xl font-bold text-white">₹{item.value}</p>
-          </div>
-        ))}
+        <div className="bg-[#111118] border border-white/5 rounded-2xl p-5">
+          <p className="text-sm text-[#A0A0A0] mb-1">{t('dashboard.today')}</p>
+          <p className="text-3xl font-bold text-white">₹{stats?.todayEarnings ?? 0}</p>
+        </div>
+        <div className="bg-[#111118] border border-white/5 rounded-2xl p-5">
+          <p className="text-sm text-[#A0A0A0] mb-1">{t('dashboard.thisMonth')}</p>
+          <p className="text-3xl font-bold text-white">₹{stats?.monthEarnings ?? 0}</p>
+        </div>
+        <div className="bg-[#111118] border border-white/5 rounded-2xl p-5">
+          <p className="text-sm text-[#A0A0A0] mb-1">{t('dashboard.allTime')}</p>
+          <p className="text-3xl font-bold text-white">₹{stats?.allEarnings ?? 0}</p>
+        </div>
       </div>
 
       <div className="bg-[#111118] border border-white/5 rounded-2xl p-5 sm:p-6 mb-6">
@@ -835,11 +900,6 @@ function EarningsSection({ stats }: { stats: { today: number; month: number; yea
         </div>
       </div>
 
-      <div className="bg-[#111118] border border-white/5 rounded-2xl p-8 text-center">
-        <TrendingUp className="w-12 h-12 text-[#333] mx-auto mb-3" />
-        <h3 className="text-lg font-bold text-white mb-1">{t('dashboard.revenueComing')}</h3>
-        <p className="text-[#A0A0A0] text-sm">{t('dashboard.revenueDesc')}</p>
-      </div>
     </motion.div>
   );
 }
