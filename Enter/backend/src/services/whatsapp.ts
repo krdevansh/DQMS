@@ -1,5 +1,8 @@
+import path from 'path';
 import { makeWASocket, useMultiFileAuthState, DisconnectReason } from '@whiskeysockets/baileys';
 import QRCode from 'qrcode';
+
+const SESSION_DIR = path.resolve(__dirname, '../../whatsapp-session');
 
 let sock: any = null;
 let isReady = false;
@@ -19,12 +22,15 @@ export async function initWhatsApp(): Promise<void> {
   initStarted = true;
 
   try {
-    const { state, saveCreds } = await useMultiFileAuthState('./whatsapp-session');
+    console.log(`WhatsApp session dir: ${SESSION_DIR}`);
+    const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
 
     sock = makeWASocket({
       auth: state,
       printQRInTerminal: false,
       browser: ['DQMS', 'Chrome', '1.0.0'],
+      syncFullHistory: false,
+      markOnlineOnConnect: false,
     });
 
     sock.ev.on('connection.update', async (update: any) => {
