@@ -45,6 +45,7 @@ export async function initWhatsApp(): Promise<void> {
       auth: state,
       printQRInTerminal: false,
       browser: Browsers.windows('Chrome'),
+      version: [2, 3000, 1041431076],
       syncFullHistory: false,
       markOnlineOnConnect: false,
       logger,
