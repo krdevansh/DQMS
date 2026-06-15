@@ -161,11 +161,12 @@ function ForgotPinFlow({ onCancel }: { onCancel: () => void }) {
         {step === 'otp' && (
           <motion.div key="fp-otp" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
             {displayOtp && (
-              <div className="bg-[#D4AF37]/10 border border-[#D4AF37]/30 px-4 py-3 rounded-xl text-center">
-                <p className="text-[#A0A0A0] text-xs mb-1">DEV MODE — Your OTP</p>
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
+                <p className="text-sm text-yellow-700 mb-1">📱 OTP (displayed for testing)</p>
                 <p className="text-3xl font-bold text-[#D4AF37] tracking-widest font-mono">{displayOtp}</p>
               </div>
             )}
+            
             <div>
               <div className="flex justify-between items-center mb-2">
                 <label className="salon-label mb-0">6-Digit OTP</label>

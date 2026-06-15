@@ -1,24 +1,14 @@
 import { env } from '../config/env';
 
-/**
- * Fast2SMS — Free SMS OTP delivery for Indian numbers (+91).
- * 100% free to start, no credit card, just an API key.
- * Sign up at: https://www.fast2sms.com
- *
- * Required env var (add on Render):
- *   FAST2SMS_API_KEY  — from fast2sms.com dashboard
- */
-
-export function isWhatsAppCloudConfigured(): boolean {
+export function isOtpServiceConfigured(): boolean {
   return !!env.FAST2SMS_API_KEY;
 }
 
-export async function sendOtpViaWhatsApp(phone: string, otp: string): Promise<void> {
+export async function sendOtpViaFast2SMS(phone: string, otp: string): Promise<void> {
   if (!env.FAST2SMS_API_KEY) {
     throw new Error('FAST2SMS_API_KEY is not set in environment variables.');
   }
 
-  // Strip country code — Fast2SMS needs 10-digit Indian number
   const digits = phone.replace(/\D/g, '');
   const tenDigit = digits.startsWith('91') && digits.length === 12
     ? digits.slice(2)
@@ -40,7 +30,6 @@ export async function sendOtpViaWhatsApp(phone: string, otp: string): Promise<vo
 
   const data = await response.json() as any;
 
-  // Log full response so we can debug in Render logs
   console.log('[Fast2SMS] Response:', JSON.stringify(data));
 
   if (!response.ok || data?.return === false) {

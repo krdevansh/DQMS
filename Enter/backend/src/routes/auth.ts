@@ -6,7 +6,7 @@ import { Otp } from '../models/Otp';
 import { env } from '../config/env';
 import { authMiddleware } from '../middleware/auth';
 import { AuthRequest, RegisterBody, LoginBody } from '../types';
-import { sendOtpViaWhatsApp } from '../services/whatsappCloudApi';
+import { sendOtpViaFast2SMS } from '../services/otpService';
 import { verifyPhoneToken, isFirebaseConfigured } from '../services/firebase';
 
 const router = Router();
@@ -45,15 +45,15 @@ router.post('/send-register-otp', async (req: AuthRequest, res: Response): Promi
     );
 
     try {
-      await sendOtpViaWhatsApp(phone, otp);
+      await sendOtpViaFast2SMS(phone, otp);
     } catch (waErr: any) {
-      console.error('[OTP] WhatsApp delivery failed:', waErr.message);
-      res.status(503).json({ error: 'Failed to send OTP. Please try again in a moment.' });
+      console.error('[OTP] Fast2SMS delivery failed:', waErr.message);
+      res.status(503).json({ error: 'Failed to send OTP via SMS. Please try again in a moment.' });
       return;
     }
 
     res.json({
-      message: 'OTP sent to your WhatsApp',
+      message: 'OTP sent via SMS',
       expiresIn: 600,
     });
   } catch (error) {
@@ -212,7 +212,7 @@ router.post('/login', async (req: AuthRequest, res: Response): Promise<void> => 
   }
 });
 
-// ─── Forgot PIN: Send OTP via WhatsApp ────────────────────────────────────────
+// ─── Forgot PIN: Send OTP ─────────────────────────────────────────────────────
 router.post('/forgot-pin', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { phone } = req.body as { phone: string };
@@ -237,15 +237,15 @@ router.post('/forgot-pin', async (req: AuthRequest, res: Response): Promise<void
     );
 
     try {
-      await sendOtpViaWhatsApp(phone, otp);
+      await sendOtpViaFast2SMS(phone, otp);
     } catch (waErr: any) {
-      console.error('[OTP] WhatsApp delivery failed:', waErr.message);
-      res.status(503).json({ error: 'Failed to send OTP. Please try again in a moment.' });
+      console.error('[OTP] Fast2SMS delivery failed:', waErr.message);
+      res.status(503).json({ error: 'Failed to send OTP via SMS. Please try again in a moment.' });
       return;
     }
 
     res.json({
-      message: 'OTP sent to your WhatsApp',
+      message: 'OTP sent via SMS',
       expiresIn: 600,
     });
   } catch (error) {

@@ -89,19 +89,16 @@ export async function bookAppointment(data: {
   complaint?: string;
   bookingType?: 'online' | 'walk-in' | 'follow-up';
 }) {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
   try {
     // Get current queue position
     const todayCount = await Appointment.countDocuments({
       hospitalId: new mongoose.Types.ObjectId(data.hospitalId),
       date: data.date,
       status: { $nin: ['cancelled', 'missed'] },
-    }).session(session);
+    });
     
     const queuePosition = todayCount + 1;
-    const estimatedWaitTime = queuePosition * 15; // 15 min per patient
+    const estimatedWaitTime = queuePosition * 15;
 
     // Create appointment
     const appointmentId = generateAppointmentId();
@@ -121,7 +118,7 @@ export async function bookAppointment(data: {
       complaint: data.complaint || '',
       bookingType: data.bookingType || 'online',
     });
-    await appointment.save({ session });
+    await appointment.save();
 
     // Create queue entry
     const ticket = generateTicket(queuePosition);
@@ -140,18 +137,13 @@ export async function bookAppointment(data: {
       complaint: data.complaint || '',
       estimatedWaitMinutes: estimatedWaitTime,
     });
-    await queueEntry.save({ session });
-
-    await session.commitTransaction();
-    session.endSession();
+    await queueEntry.save();
 
     // Update doctor's current patient count
     await Doctor.findByIdAndUpdate(data.doctorId, { $inc: { currentPatientsToday: 1 } });
 
     return { appointment, queueEntry, ticket, queuePosition, estimatedWaitTime };
   } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
     throw error;
   }
 }

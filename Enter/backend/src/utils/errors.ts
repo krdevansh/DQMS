@@ -1,3 +1,5 @@
+import { env } from '../config/env';
+
 export class AppError extends Error {
   public statusCode: number;
   public isOperational: boolean;
@@ -52,5 +54,12 @@ export function errorHandler(err: Error, _req: any, res: any, _next: any): void 
   }
 
   console.error('Unhandled error:', err);
-  res.status(500).json({ error: 'Internal server error' });
+
+  if (err.name === 'CastError') {
+    res.status(400).json({ error: 'Invalid ID format' });
+    return;
+  }
+
+  const message = env.NODE_ENV === 'development' ? err.message : 'Internal server error';
+  res.status(500).json({ error: message });
 }

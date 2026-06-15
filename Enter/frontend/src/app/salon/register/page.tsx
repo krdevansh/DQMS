@@ -85,7 +85,11 @@ function RegisterForm() {
       return;
     }
 
-    if (data?.otp) setDisplayOtp(data.otp);
+    if (data?.otp) {
+      setDisplayOtp(data.otp);
+    } else {
+      setDisplayOtp('');
+    }
     startCountdown();
     setStep('otp');
   };
@@ -93,12 +97,11 @@ function RegisterForm() {
   const handleResendOtp = async () => {
     setLoading(true);
     setErrorMsg('');
-    const { data, error } = await api.post<{ message: string; otp?: string }>('/auth/send-register-otp', {
+    const { data, error } = await api.post<{ message: string }>('/auth/send-register-otp', {
       phone: formData.phone,
     });
     setLoading(false);
     if (error) { setErrorMsg(error); return; }
-    if (data?.otp) setDisplayOtp(data.otp);
     startCountdown();
     setFormData((f) => ({ ...f, otp: '' }));
   };
@@ -330,8 +333,8 @@ function RegisterForm() {
             className="space-y-5"
           >
             {displayOtp && (
-              <div className="bg-[#D4AF37]/10 border border-[#D4AF37]/30 px-4 py-3 rounded-xl text-center">
-                <p className="text-[#A0A0A0] text-xs mb-1">DEV MODE — Your OTP</p>
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
+                <p className="text-sm text-yellow-700 mb-1">📱 OTP (displayed for testing)</p>
                 <p className="text-3xl font-bold text-[#D4AF37] tracking-widest font-mono">{displayOtp}</p>
               </div>
             )}
