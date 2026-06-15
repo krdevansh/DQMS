@@ -351,7 +351,7 @@ router.get('/subscriptions/schools', adminAuthMiddleware, async (_req: AuthReque
 
 router.get('/subscriptions/salons', adminAuthMiddleware, async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const subs = await Subscription.find({ role: 'salon_admin' })
+    const subs = await Subscription.find({ role: { $in: ['salon_admin', 'salon'] } })
       .populate('userId', 'name phone')
       .sort({ createdAt: -1 });
     res.json({ subscriptions: subs });

@@ -2,7 +2,7 @@ import mongoose, { Document, Schema } from 'mongoose';
 
 export interface ISubscription extends Document {
   userId: mongoose.Types.ObjectId;
-  role: 'hospital_admin' | 'school_admin' | 'salon_admin';
+  role: 'hospital_admin' | 'school_admin' | 'salon_admin' | 'salon';
   plan?: '1month' | '3month';
   amount: number;
   utr: string;
@@ -17,7 +17,7 @@ export interface ISubscription extends Document {
 const SubscriptionSchema = new Schema<ISubscription>(
   {
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    role: { type: String, enum: ['hospital_admin', 'school_admin', 'salon_admin'], required: true },
+    role: { type: String, enum: ['hospital_admin', 'school_admin', 'salon_admin', 'salon'], required: true },
     plan: { type: String, enum: ['1month', '3month'] },
     amount: { type: Number, required: true },
     utr: { type: String, required: true },

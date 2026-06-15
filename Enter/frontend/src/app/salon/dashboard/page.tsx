@@ -582,8 +582,19 @@ function EditProfileSection({ salon, onUpdate }: {
   const [members, setMembers] = useState(salon.members || []);
   const [saving, setSaving] = useState(false);
 
-  const handleImageUpload = (file: File, cb: (url: string) => void) => {
-    cb(URL.createObjectURL(file));
+  const handleImageUpload = async (file: File, cb: (url: string) => void) => {
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = reader.result as string;
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/upload/profile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify({ image: base64 }),
+      });
+      const data = await res.json();
+      if (data.url) cb(data.url);
+    };
+    reader.readAsDataURL(file);
   };
 
   const addMember = () => setMembers([...members, { name: '', specialization: '', experience: '', image: '' }]);
@@ -975,8 +986,9 @@ function SubscriptionSection() {
       {currentSub?.status === 'pending' && (
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-6 mb-6 text-center">
           <Clock className="w-10 h-10 text-amber-400 mx-auto mb-3" />
-          <p className="text-amber-400 font-bold text-lg">Request Pending</p>
-          <p className="text-xs text-slate-400 mt-1">Admin is reviewing your payment</p>
+          <p className="text-amber-400 font-bold text-lg">Payment Under Review</p>
+          <p className="text-xs text-slate-400 mt-2">Admin will verify your payment. Max wait time: <span className="text-amber-300 font-semibold">8 hours</span>.</p>
+          <p className="text-xs text-slate-500 mt-1">You'll be notified once your subscription is activated.</p>
         </div>
       )}
 

@@ -10,13 +10,13 @@ const router = Router();
 const PLAN_PRICES: Record<string, Record<string, number>> = {
   hospital_admin: { '1month': 500 },
   school_admin: { '1month': 2000 },
-  salon_admin: { '1month': 30, '3month': 85 },
+  salon: { '1month': 30, '3month': 85 },
 };
 
-router.post('/request', authMiddleware, roleAuth('hospital_admin', 'school_admin', 'salon_admin'), async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/request', authMiddleware, roleAuth('hospital_admin', 'school_admin', 'salon'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { utr, screenshot, plan } = req.body;
-    const role = req.user!.role as 'hospital_admin' | 'school_admin' | 'salon_admin';
+    const role = req.user!.role;
 
     if (!utr || !screenshot) {
       res.status(400).json({ error: 'UTR and screenshot are required' });
@@ -76,7 +76,7 @@ router.post('/request', authMiddleware, roleAuth('hospital_admin', 'school_admin
   }
 });
 
-router.get('/my-status', authMiddleware, roleAuth('hospital_admin', 'school_admin', 'salon_admin'), async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/my-status', authMiddleware, roleAuth('hospital_admin', 'school_admin', 'salon'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const now = new Date();
     const user = await User.findById(req.user!.userId).select('trialStartDate trialEndDate');
