@@ -1,5 +1,7 @@
 import { Router, Response } from 'express';
 import { Salon } from '../models/Salon';
+import { User } from '../models/User';
+import { Subscription } from '../models/Subscription';
 import { authMiddleware } from '../middleware/auth';
 import { AuthRequest } from '../types';
 
@@ -69,7 +71,22 @@ router.get('/', async (req: AuthRequest, res: Response): Promise<void> => {
     }
 
     const salons = await Salon.find(filter).sort({ rating: -1 });
-    res.json({ salons });
+    if (salons.length === 0) { res.json({ salons: [] }); return; }
+
+    const now = new Date();
+    const ownerIds = [...new Set(salons.map(s => s.ownerId.toString()))];
+
+    const [activeTrials, activeSubs] = await Promise.all([
+      User.find({ _id: { $in: ownerIds }, trialEndDate: { $gt: now } }).select('_id'),
+      Subscription.find({ userId: { $in: ownerIds }, status: 'active' }).select('userId'),
+    ]);
+
+    const activeTrialIds = new Set(activeTrials.map(u => u._id.toString()));
+    const activeSubIds = new Set(activeSubs.map(s => s.userId.toString()));
+    const validOwnerIds = new Set([...activeTrialIds, ...activeSubIds]);
+
+    const visible = salons.filter(s => validOwnerIds.has(s.ownerId.toString()));
+    res.json({ salons: visible });
   } catch (error) {
     console.error('List salons error:', error);
     res.status(500).json({ error: 'Internal server error' });

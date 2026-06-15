@@ -10,6 +10,8 @@ export interface IUser extends Document {
   faceShape?: string;
   gender?: string;
   profilePic?: string;
+  trialStartDate?: Date;
+  trialEndDate?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -25,6 +27,8 @@ const UserSchema = new Schema<IUser>(
     faceShape: { type: String },
     gender: { type: String },
     profilePic: { type: String },
+    trialStartDate: { type: Date },
+    trialEndDate: { type: Date },
   },
   { timestamps: true }
 );

@@ -78,6 +78,7 @@ function SalonDashboardContent() {
   const [queueData, setQueueData] = useState<{ serving: QueueItem | null; waiting: QueueItem[]; totalWaiting: number } | null>(null);
   const [stats, setStats] = useState<{ today: number; month: number; year: number; all: number } | null>(null);
   const [toast, setToast] = useState('');
+  const [trialExpired, setTrialExpired] = useState(false);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -86,7 +87,13 @@ function SalonDashboardContent() {
 
   const fetchSalon = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await api.get<{ salon: SalonData }>('/salons/my');
+    const [salonRes, statusRes] = await Promise.all([
+      api.get<{ salon: SalonData }>('/salons/my'),
+      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/subscriptions/my-status`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      }).then(r => r.json()).catch(() => ({})),
+    ]);
+    const { data } = salonRes;
     if (data) {
       setSalon(data.salon);
       setNoSalon(false);
@@ -96,6 +103,11 @@ function SalonDashboardContent() {
       window.dispatchEvent(new CustomEvent('dqms-shop-name-update', { detail: data.salon.name }));
     } else {
       setNoSalon(true);
+    }
+    const trial = statusRes?.trial;
+    const sub = statusRes?.subscription;
+    if (trial && !trial.active && (!sub || sub.status !== 'active')) {
+      setTrialExpired(true);
     }
     setLoading(false);
   }, []);
@@ -173,7 +185,7 @@ function SalonDashboardContent() {
       </AnimatePresence>
 
       {section === 'dashboard' && (
-        <DashboardSection salon={salon} queueData={queueData} stats={stats} toggleOpen={toggleOpen} fetchQueue={() => fetchQueue(salon._id)} />
+        <DashboardSection salon={salon} queueData={queueData} stats={stats} toggleOpen={toggleOpen} fetchQueue={() => fetchQueue(salon._id)} trialExpired={trialExpired} />
       )}
       {section === 'profile' && <EditProfileSection salon={salon} onUpdate={updateSalon} />}
       {section === 'earnings' && <EarningsSection stats={stats} />}
@@ -315,12 +327,13 @@ function CreateSalonForm({ onCreated, showToast }: {
   );
 }
 
-function DashboardSection({ salon, queueData, stats, toggleOpen, fetchQueue }: {
+function DashboardSection({ salon, queueData, stats, toggleOpen, fetchQueue, trialExpired }: {
   salon: SalonData;
   queueData: { serving: QueueItem | null; waiting: QueueItem[]; totalWaiting: number } | null;
   stats: { today: number; month: number; year: number; all: number } | null;
   toggleOpen: () => void;
   fetchQueue: () => void;
+  trialExpired?: boolean;
 }) {
   const { t } = useLanguage();
   const [actionLoading, setActionLoading] = useState('');
@@ -363,6 +376,18 @@ function DashboardSection({ salon, queueData, stats, toggleOpen, fetchQueue }: {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+      {trialExpired && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-4 mb-4 flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+          <p className="text-red-300 text-sm">
+            Your free trial has expired.{' '}
+            <a href="/salon/dashboard?section=subscription" className="text-[#D4AF37] underline font-semibold hover:no-underline">
+              Subscribe now
+            </a>{' '}
+            to keep your salon listed and continue serving customers.
+          </p>
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-white">{salon.name} <span className="text-[#A0A0A0] text-lg font-normal">({salon.shopNumber})</span></h1>
@@ -824,6 +849,7 @@ function SubscriptionSection() {
   const [success, setSuccess] = useState('');
   const [copied, setCopied] = useState(false);
   const [currentSub, setCurrentSub] = useState<any>(null);
+  const [currentTrial, setCurrentTrial] = useState<any>(null);
   const [pageLoading, setPageLoading] = useState(true);
 
   const headers = () => ({
@@ -836,10 +862,20 @@ function SubscriptionSection() {
     const res = await fetch(`${API}/subscriptions/my-status`, { headers: headers() });
     const data = await res.json();
     if (data.subscription) setCurrentSub(data.subscription);
+    if (data.trial) setCurrentTrial(data.trial);
     setPageLoading(false);
   };
 
   useEffect(() => { fetchStatus(); }, []);
+
+  const getTimeLeft = (endDate: string) => {
+    const diff = new Date(endDate).getTime() - Date.now();
+    if (diff <= 0) return 'Expired';
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    if (hours > 0) return `${hours}h ${minutes}m left`;
+    return `${minutes}m left`;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -898,12 +934,33 @@ function SubscriptionSection() {
     );
   }
 
+  const showNewSubscription = !currentSub || currentSub.status === 'rejected' || (currentSub.status === 'expired' && (!currentTrial || !currentTrial.active));
+
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white">Salon Subscription</h1>
         <p className="text-[#A0A0A0] text-sm mt-0.5">Choose a plan and pay via UPI</p>
       </div>
+
+      {currentTrial?.active && !currentSub?.status && (
+        <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-6 mb-6 text-center">
+          <Clock className="w-10 h-10 text-blue-400 mx-auto mb-3" />
+          <p className="text-blue-400 font-bold text-lg">Free Trial Active</p>
+          <p className="text-xs text-slate-400 mt-1">
+            {getTimeLeft(currentTrial.endDate)} &middot; Expires {new Date(currentTrial.endDate).toLocaleDateString('en-IN')}
+          </p>
+          <p className="text-xs text-slate-500 mt-2">Subscribe anytime to keep your salon listed</p>
+        </div>
+      )}
+
+      {currentTrial && !currentTrial.active && !currentSub?.status && (
+        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6 mb-6 text-center">
+          <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-3" />
+          <p className="text-red-400 font-bold text-lg">Trial Expired</p>
+          <p className="text-xs text-slate-400 mt-1">Your free trial has ended. Subscribe to continue.</p>
+        </div>
+      )}
 
       {currentSub?.status === 'active' && (
         <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-6 mb-6 text-center">
@@ -923,15 +980,7 @@ function SubscriptionSection() {
         </div>
       )}
 
-      {currentSub?.status === 'expired' && (
-        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6 mb-6 text-center">
-          <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-3" />
-          <p className="text-red-400 font-bold text-lg">Subscription Expired</p>
-          <p className="text-xs text-slate-400 mt-1">Please renew your subscription</p>
-        </div>
-      )}
-
-      {(!currentSub || currentSub.status === 'rejected' || currentSub.status === 'expired') && (
+      {showNewSubscription && (
         <div className="bg-[#111118] border border-white/5 rounded-2xl p-6">
           <div className="grid grid-cols-2 gap-3 mb-6">
             {PLANS.map((plan) => (

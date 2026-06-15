@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { authMiddleware, roleAuth } from '../middleware/auth';
 import { AuthRequest } from '../types';
+import { User } from '../models/User';
 import { Subscription } from '../models/Subscription';
 import { Wallet } from '../models/Wallet';
 
@@ -77,12 +78,20 @@ router.post('/request', authMiddleware, roleAuth('hospital_admin', 'school_admin
 
 router.get('/my-status', authMiddleware, roleAuth('hospital_admin', 'school_admin', 'salon_admin'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    const now = new Date();
+    const user = await User.findById(req.user!.userId).select('trialStartDate trialEndDate');
     const sub = await Subscription.findOne({ userId: req.user!.userId }).sort({ createdAt: -1 });
-    if (!sub) {
-      res.json({ subscription: null });
-      return;
-    }
-    res.json({ subscription: sub });
+
+    const trialActive = !!(user?.trialEndDate && user.trialEndDate > now);
+
+    res.json({
+      subscription: sub || null,
+      trial: user ? {
+        startDate: user.trialStartDate,
+        endDate: user.trialEndDate,
+        active: trialActive,
+      } : null,
+    });
   } catch (error) {
     console.error('Get subscription status error:', error);
     res.status(500).json({ error: 'Internal server error' });

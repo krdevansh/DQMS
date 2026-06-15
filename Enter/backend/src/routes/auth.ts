@@ -129,6 +129,9 @@ router.post('/register', async (req: AuthRequest, res: Response): Promise<void> 
 
     const hashedPin = await bcrypt.hash(pin, 10);
 
+    const trialStartDate = role === 'salon' ? new Date() : undefined;
+    const trialEndDate = role === 'salon' ? new Date(Date.now() + 24 * 60 * 60 * 1000) : undefined;
+
     const user = new User({
       name,
       salonName,
@@ -136,6 +139,8 @@ router.post('/register', async (req: AuthRequest, res: Response): Promise<void> 
       phone,
       pin: hashedPin,
       role,
+      trialStartDate,
+      trialEndDate,
     });
 
     await user.save();
@@ -155,6 +160,8 @@ router.post('/register', async (req: AuthRequest, res: Response): Promise<void> 
         email: user.email,
         phone: user.phone,
         role: user.role,
+        trialStartDate: user.trialStartDate,
+        trialEndDate: user.trialEndDate,
       },
     });
   } catch (error: any) {
@@ -208,6 +215,8 @@ router.post('/login', async (req: AuthRequest, res: Response): Promise<void> => 
         email: user.email,
         phone: user.phone,
         role: user.role,
+        trialStartDate: user.trialStartDate,
+        trialEndDate: user.trialEndDate,
       },
     });
   } catch (error) {
