@@ -4,6 +4,7 @@ node_modules/
 .env.local
 whatsapp-session/
 backend/dist/
+admin-gateway/dist/
 *.log
 Enter/backend/.wwebjs_cache/
 Enter/backend/.wwebjs_auth/
