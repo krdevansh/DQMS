@@ -21,17 +21,35 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 const JWT_SECRET = process.env.JWT_SECRET || '';
 const BACKEND_URL = (process.env.BACKEND_URL || 'http://localhost:3001').replace(/\/$/, '');
 const MAIN_FRONTEND_URL = (process.env.MAIN_FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
+const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || '';
 const GMAIL_USER = process.env.GMAIL_USER || '';
 const GMAIL_APP_PASS = (process.env.GMAIL_APP_PASS || '').replace(/\s+/g, '');
 
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false,
-  requireTLS: true,
-  auth: { user: GMAIL_USER, pass: GMAIL_APP_PASS },
-  connectionTimeout: 15000,
-});
+function createTransporter() {
+  if (SENDGRID_API_KEY) {
+    return nodemailer.createTransport({
+      host: 'smtp.sendgrid.net',
+      port: 587,
+      secure: false,
+      auth: { user: 'apikey', pass: SENDGRID_API_KEY },
+      connectionTimeout: 15000,
+    });
+  }
+  return nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false,
+    requireTLS: true,
+    auth: { user: GMAIL_USER, pass: GMAIL_APP_PASS },
+    connectionTimeout: 15000,
+  });
+}
+
+const transporter = createTransporter();
+
+function getSenderEmail() {
+  return SENDGRID_API_KEY ? 'noreply@dqms-admin.com' : GMAIL_USER;
+}
 
 interface OtpEntry {
   otp: string;
@@ -45,7 +63,7 @@ function generateOtp(): string {
 
 function sendOtpEmail(email: string, otp: string): Promise<unknown> {
   return transporter.sendMail({
-    from: `"DQMS Admin" <${GMAIL_USER}>`,
+    from: `"DQMS Admin" <${getSenderEmail()}>`,
     to: email,
     subject: 'DQMS Admin Login OTP',
     html: `
