@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DQMS Admin Dashboard</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0A0A0A;color:#fff;display:flex;min-height:100vh}
+.sidebar{width:220px;background:#111;border-right:1px solid rgba(255,255,255,0.06);padding:24px 0;flex-shrink:0;display:flex;flex-direction:column}
+.sidebar-brand{padding:0 20px 20px;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:12px}
+.sidebar-brand h2{font-size:16px;background:linear-gradient(135deg,#2563EB,#7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.sidebar-brand p{font-size:11px;color:#64748b;margin-top:2px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;color:#94a3b8;font-size:13px;cursor:pointer;transition:all .15s;border:none;background:none;width:100%;text-align:left}
+.nav-item:hover{background:rgba(37,99,235,0.08);color:#fff}
+.nav-item.active{background:rgba(37,99,235,0.12);color:#2563EB;border-right:2px solid #2563EB}
+.nav-item svg{width:18px;height:18px;flex-shrink:0}
+.sidebar-footer{margin-top:auto;padding:16px 20px;border-top:1px solid rgba(255,255,255,0.06)}
+.logout-btn{display:flex;align-items:center;gap:8px;color:#ef4444;font-size:13px;text-decoration:none;padding:8px 12px;border-radius:8px;transition:background .15s}
+.logout-btn:hover{background:rgba(239,68,68,0.1)}
+.main{flex:1;padding:24px 32px;overflow-y:auto;max-height:100vh}
+.page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}
+.page-header h1{font-size:22px;font-weight:700}
+.page-header .subtitle{color:#64748b;font-size:13px;margin-top:4px}
+.page{display:none}
+.page.active{display:block}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+.stat-card{background:#111;border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:20px}
+.stat-card .label{color:#64748b;font-size:12px;margin-bottom:4px}
+.stat-card .value{font-size:28px;font-weight:700}
+.stat-card .value.green{color:#22c55e}
+.stat-card .value.blue{color:#3b82f6}
+.stat-card .value.purple{color:#a855f7}
+.stat-card .value.yellow{color:#eab308}
+.toolbar{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.toolbar input,.toolbar select{background:#1A1A1A;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px 12px;color:#fff;font-size:13px;outline:none}
+.toolbar input:focus,.toolbar select:focus{border-color:rgba(37,99,235,0.5)}
+.toolbar input::placeholder{color:#475569}
+.table-wrap{background:#111;border:1px solid rgba(255,255,255,0.06);border-radius:12px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:12px 16px;color:#64748b;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid rgba(255,255,255,0.06);white-space:nowrap}
+td{padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.04);color:#cbd5e1}
+tr:hover td{background:rgba(255,255,255,0.02)}
+.empty{text-align:center;padding:48px 16px;color:#64748b;font-size:14px}
+.loading{text-align:center;padding:48px;color:#64748b}
+.spinner{width:24px;height:24px;border:2px solid #2563EB;border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600}
+.badge.green{background:rgba(34,197,94,0.15);color:#22c55e}
+.badge.red{background:rgba(239,68,68,0.15);color:#ef4444}
+.badge.yellow{background:rgba(234,179,8,0.15);color:#eab308}
+.badge.blue{background:rgba(59,130,246,0.15);color:#3b82f6}
+.btn{display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:opacity .15s;text-decoration:none;color:#fff}
+.btn:hover{opacity:.8}
+.btn-sm{padding:3px 8px;font-size:11px}
+.btn-green{background:#22c55e}
+.btn-red{background:#ef4444}
+.btn-blue{background:#3b82f6}
+.btn-yellow{background:#eab308;color:#000}
+.btn-outline{background:transparent;border:1px solid rgba(255,255,255,0.15);color:#94a3b8}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:#1A1A1A;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:24px;max-width:480px;width:90%}
+.modal h3{font-size:16px;margin-bottom:8px}
+.modal p{color:#94a3b8;font-size:13px;margin-bottom:20px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end}
+.modal-actions .btn{padding:8px 20px;font-size:13px}
+.toast{position:fixed;top:20px;right:20px;z-index:200;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:500;display:none;max-width:400px}
+.toast.show{display:block;animation:fadeIn .2s}
+.toast.success{background:rgba(34,197,94,0.2);border:1px solid #22c55e;color:#22c55e}
+.toast.error{background:rgba(239,68,68,0.2);border:1px solid #ef4444;color:#ef4444}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+.tab-content{display:none}
+.tab-content.active{display:block}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.detail-item label{color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+.detail-item span{display:block;color:#fff;font-size:14px;margin-top:2px}
+@media(max-width:768px){.sidebar{width:60px}.sidebar-brand h2,.sidebar-brand p,.nav-item span{display:none}.nav-item{justify-content:center;padding:10px}.main{padding:16px}.detail-grid{grid-template-columns:1fr}.stats-grid{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <h2>DQMS Admin</h2>
+    <p>Panel v1.0</p>
+  </div>
+  <button class="nav-item active" data-tab="overview" onclick="switchTab('overview')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+    <span>Overview</span>
+  </button>
+  <button class="nav-item" data-tab="salons" onclick="switchTab('salons')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+    <span>Salons</span>
+  </button>
+  <button class="nav-item" data-tab="hospitals" onclick="switchTab('hospitals')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+    <span>Hospitals</span>
+  </button>
+  <button class="nav-item" data-tab="schools" onclick="switchTab('schools')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 6V2M6 12H2m4 6H2m16-6h4m-4 6h4M12 22v-4"/><circle cx="12" cy="12" r="2"/></svg>
+    <span>Schools</span>
+  </button>
+  <button class="nav-item" data-tab="users" onclick="switchTab('users')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+    <span>Users</span>
+  </button>
+  <button class="nav-item" data-tab="recharges" onclick="switchTab('recharges')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/><path d="M12 6v6l4 2"/></svg>
+    <span>Recharges</span>
+  </button>
+  <button class="nav-item" data-tab="subscriptions" onclick="switchTab('subscriptions')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6 6 .5-4.5 4.5L18 20l-6-3-6 3 1.5-7L3 8.5 9 8z"/></svg>
+    <span>Subscriptions</span>
+  </button>
+  <div class="sidebar-footer">
+    <a href="/logout" class="logout-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      Logout
+    </a>
+  </div>
+</nav>
+
+<div class="main">
+  <div class="toast" id="toast"></div>
+
+  <!-- Overview -->
+  <div class="page active" id="page-overview">
+    <div class="page-header">
+      <div>
+        <h1>Dashboard</h1>
+        <p class="subtitle">Welcome back, Admin</p>
+      </div>
+    </div>
+    <div class="stats-grid" id="stats-grid"></div>
+  </div>
+
+  <!-- Salons -->
+  <div class="page" id="page-salons">
+    <div class="page-header"><h1>Salons</h1></div>
+    <div class="toolbar">
+      <input type="text" id="salons-search" placeholder="Search by name, city, shop number..." oninput="renderSalons()">
+      <select id="salons-filter" onchange="renderSalons()">
+        <option value="all">All</option>
+        <option value="verified">Verified</option>
+        <option value="unverified">Unverified</option>
+      </select>
+    </div>
+    <div class="table-wrap"><table><thead><tr><th>Shop #</th><th>Name</th><th>City</th><th>Phone</th><th>Status</th><th>Actions</th></tr></thead><tbody id="salons-tbody"></tbody></table></div>
+  </div>
+
+  <!-- Hospitals -->
+  <div class="page" id="page-hospitals">
+    <div class="page-header"><h1>Hospitals</h1></div>
+    <div class="toolbar">
+      <input type="text" id="hospitals-search" placeholder="Search by name, city..." onchange="renderHospitals()">
+    </div>
+    <div class="table-wrap"><table><thead><tr><th>Name</th><th>City</th><th>Phone</th><th>Status</th><th>Actions</th></tr></thead><tbody id="hospitals-tbody"></tbody></table></div>
+  </div>
+
+  <!-- Schools -->
+  <div class="page" id="page-schools">
+    <div class="page-header"><h1>Schools</h1></div>
+    <div class="toolbar">
+      <input type="text" id="schools-search" placeholder="Search by name, city..." onchange="renderSchools()">
+    </div>
+    <div class="table-wrap"><table><thead><tr><th>Name</th><th>City</th><th>Actions</th></tr></thead><tbody id="schools-tbody"></tbody></table></div>
+  </div>
+
+  <!-- Users -->
+  <div class="page" id="page-users">
+    <div class="page-header"><h1>Users</h1></div>
+    <div class="toolbar">
+      <input type="text" id="users-search" placeholder="Search by name, phone..." onchange="renderUsers()">
+    </div>
+    <div class="table-wrap"><table><thead><tr><th>Name</th><th>Phone</th><th>Role</th><th>Joined</th><th>Actions</th></tr></thead><tbody id="users-tbody"></tbody></table></div>
+  </div>
+
+  <!-- Recharges -->
+  <div class="page" id="page-recharges">
+    <div class="page-header"><h1>Recharges</h1></div>
+    <div class="toolbar">
+      <select id="recharges-filter" onchange="renderRecharges()">
+        <option value="pending">Pending</option>
+        <option value="all">All</option>
+      </select>
+    </div>
+    <div class="table-wrap"><table><thead><tr><th>User</th><th>Phone</th><th>Amount</th><th>UTR</th><th>Screenshot</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody id="recharges-tbody"></tbody></table></div>
+  </div>
+
+  <!-- Subscriptions -->
+  <div class="page" id="page-subscriptions">
+    <div class="page-header"><h1>Subscriptions</h1></div>
+    <div class="toolbar">
+      <select id="subs-type" onchange="renderSubscriptions()">
+        <option value="salons">Salons</option>
+        <option value="hospitals">Hospitals</option>
+        <option value="schools">Schools</option>
+      </select>
+      <select id="subs-filter" onchange="renderSubscriptions()">
+        <option value="pending">Pending</option>
+        <option value="all">All</option>
+      </select>
+    </div>
+    <div class="table-wrap"><table><thead><tr><th>User</th><th>Plan</th><th>Amount</th><th>Screenshot</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody id="subs-tbody"></tbody></table></div>
+  </div>
+</div>
+
+<!-- Confirm Modal -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal">
+    <h3 id="modal-title">Confirm</h3>
+    <p id="modal-message">Are you sure?</p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-red" id="modal-confirm-btn" onclick="executeAction()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let pendingAction = null;
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', ...opts.headers },
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  return res.json();
+}
+
+function openModal(title, msg, action) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-message').textContent = msg;
+  pendingAction = action;
+  document.getElementById('confirm-modal').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('confirm-modal').classList.remove('show');
+  pendingAction = null;
+}
+
+async function executeAction() {
+  if (!pendingAction) return;
+  const btn = document.getElementById('modal-confirm-btn');
+  btn.disabled = true;
+  btn.textContent = 'Processing...';
+  try {
+    await pendingAction();
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Confirm';
+    closeModal();
+  }
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.querySelector('[data-tab="' + name + '"]').classList.add('active');
+  if (name === 'overview') loadOverview();
+  else if (name === 'salons') renderSalons();
+  else if (name === 'hospitals') renderHospitals();
+  else if (name === 'schools') renderSchools();
+  else if (name === 'users') renderUsers();
+  else if (name === 'recharges') renderRecharges();
+  else if (name === 'subscriptions') renderSubscriptions();
+}
+
+// ─── Overview ────────────────────────────────────────────────────────────────
+async function loadOverview() {
+  const grid = document.getElementById('stats-grid');
+  grid.innerHTML = '<div class="loading"><div class="spinner"></div>Loading stats...</div>';
+  try {
+    const [salons, users, hospitals, schools] = await Promise.all([
+      api('/api/admin/salons'), api('/api/admin/users'), api('/api/admin/hospitals'), api('/api/admin/schools')
+    ]);
+    grid.innerHTML = `
+      <div class="stat-card"><div class="label">Total Salons</div><div class="value blue">${salons.total || 0}</div></div>
+      <div class="stat-card"><div class="label">Total Users</div><div class="value green">${users.total || 0}</div></div>
+      <div class="stat-card"><div class="label">Total Hospitals</div><div class="value purple">${hospitals.total || 0}</div></div>
+      <div class="stat-card"><div class="label">Total Schools</div><div class="value yellow">${schools.total || 0}</div></div>
+    `;
+  } catch(e) {
+    grid.innerHTML = '<div class="empty">Failed to load stats</div>';
+  }
+}
+
+// ─── Salons ──────────────────────────────────────────────────────────────────
+let salonsData = [];
+async function loadSalons() {
+  const data = await api('/api/admin/salons');
+  salonsData = data.salons || [];
+  return salonsData;
+}
+
+function renderSalons() {
+  const tbody = document.getElementById('salons-tbody');
+  const q = (document.getElementById('salons-search').value || '').toLowerCase();
+  const f = document.getElementById('salons-filter').value;
+  let items = salonsData;
+  if (f === 'verified') items = items.filter(s => s.isVerified);
+  else if (f === 'unverified') items = items.filter(s => !s.isVerified);
+  if (q) items = items.filter(s => (s.name||'').toLowerCase().includes(q) || (s.city||'').toLowerCase().includes(q) || (s.shopNumber||'').toLowerCase().includes(q));
+
+  if (!items.length) return tbody.innerHTML = '<tr><td colspan="6" class="empty">No salons found</td></tr>';
+  tbody.innerHTML = items.map(s => `<tr>
+    <td>${s.shopNumber || '-'}</td>
+    <td><strong>${s.name || 'Unnamed'}</strong></td>
+    <td>${s.city || '-'}</td>
+    <td>${s.phone || '-'}</td>
+    <td><span class="badge ${s.isVerified ? 'green' : 'red'}">${s.isVerified ? 'Verified' : 'Unverified'}</span></td>
+    <td style="display:flex;gap:4px;flex-wrap:wrap">
+      ${s.isVerified
+        ? `<button class="btn btn-yellow btn-sm" onclick="confirmUnverifySalon('${s._id}')">Unverify</button>`
+        : `<button class="btn btn-green btn-sm" onclick="confirmVerifySalon('${s._id}')">Verify</button>`
+      }
+      <button class="btn btn-red btn-sm" onclick="confirmDeleteSalon('${s._id}','${(s.name||'').replace(/'/g,"\\'")}')">Delete</button>
+    </td>
+  </tr>`).join('');
+}
+
+async function confirmVerifySalon(id) {
+  openModal('Verify Salon', 'Mark this salon as verified?', async () => {
+    await api('/api/admin/salons/' + id + '/verify', { method: 'POST' });
+    showToast('Salon verified', 'success');
+    await loadSalons(); renderSalons();
+  });
+}
+async function confirmUnverifySalon(id) {
+  openModal('Unverify Salon', 'Mark this salon as unverified?', async () => {
+    await api('/api/admin/salons/' + id + '/unverify', { method: 'POST' });
+    showToast('Salon unverified', 'success');
+    await loadSalons(); renderSalons();
+  });
+}
+async function confirmDeleteSalon(id, name) {
+  openModal('Delete Salon', 'Delete "' + name + '"? This cannot be undone.', async () => {
+    await api('/api/admin/salons/' + id, { method: 'DELETE' });
+    showToast('Salon deleted', 'success');
+    await loadSalons(); renderSalons();
+  });
+}
+
+// ─── Hospitals ───────────────────────────────────────────────────────────────
+let hospitalsData = [];
+async function loadHospitals() {
+  const data = await api('/api/admin/hospitals');
+  hospitalsData = data.hospitals || [];
+  return hospitalsData;
+}
+
+function renderHospitals() {
+  const tbody = document.getElementById('hospitals-tbody');
+  const q = (document.getElementById('hospitals-search').value || '').toLowerCase();
+  let items = hospitalsData;
+  if (q) items = items.filter(h => (h.name||'').toLowerCase().includes(q) || (h.city||'').toLowerCase().includes(q));
+  if (!items.length) return tbody.innerHTML = '<tr><td colspan="5" class="empty">No hospitals found</td></tr>';
+  tbody.innerHTML = items.map(h => `<tr>
+    <td><strong>${h.name || 'Unnamed'}</strong></td>
+    <td>${h.city || '-'}</td>
+    <td>${h.phone || '-'}</td>
+    <td><span class="badge ${h.isVerified ? 'green' : 'red'}">${h.isVerified ? 'Verified' : 'Unverified'}</span></td>
+    <td style="display:flex;gap:4px;flex-wrap:wrap">
+      ${h.isVerified
+        ? `<button class="btn btn-yellow btn-sm" onclick="confirmUnverifyHospital('${h._id}')">Unverify</button>`
+        : `<button class="btn btn-green btn-sm" onclick="confirmVerifyHospital('${h._id}')">Verify</button>`
+      }
+      <button class="btn btn-red btn-sm" onclick="confirmDeleteHospital('${h._id}','${(h.name||'').replace(/'/g,"\\'")}')">Delete</button>
+    </td>
+  </tr>`).join('');
+}
+
+async function confirmVerifyHospital(id) {
+  openModal('Verify Hospital', 'Mark this hospital as verified?', async () => {
+    await api('/api/admin/hospitals/' + id + '/verify', { method: 'POST' });
+    showToast('Hospital verified', 'success');
+    await loadHospitals(); renderHospitals();
+  });
+}
+async function confirmUnverifyHospital(id) {
+  openModal('Unverify Hospital', 'Mark this hospital as unverified?', async () => {
+    await api('/api/admin/hospitals/' + id + '/unverify', { method: 'POST' });
+    showToast('Hospital unverified', 'success');
+    await loadHospitals(); renderHospitals();
+  });
+}
+async function confirmDeleteHospital(id, name) {
+  openModal('Delete Hospital', 'Delete "' + name + '"? This cannot be undone.', async () => {
+    await api('/api/admin/hospitals/' + id, { method: 'DELETE' });
+    showToast('Hospital deleted', 'success');
+    await loadHospitals(); renderHospitals();
+  });
+}
+
+// ─── Schools ─────────────────────────────────────────────────────────────────
+let schoolsData = [];
+async function loadSchools() {
+  const data = await api('/api/admin/schools');
+  schoolsData = data.schools || [];
+  return schoolsData;
+}
+
+function renderSchools() {
+  const tbody = document.getElementById('schools-tbody');
+  const q = (document.getElementById('schools-search').value || '').toLowerCase();
+  let items = schoolsData;
+  if (q) items = items.filter(s => (s.name||'').toLowerCase().includes(q) || (s.city||'').toLowerCase().includes(q));
+  if (!items.length) return tbody.innerHTML = '<tr><td colspan="3" class="empty">No schools found</td></tr>';
+  tbody.innerHTML = items.map(s => `<tr>
+    <td><strong>${s.name || 'Unnamed'}</strong></td>
+    <td>${s.city || '-'}</td>
+    <td><button class="btn btn-red btn-sm" onclick="confirmDeleteSchool('${s._id}','${(s.name||'').replace(/'/g,"\\'")}')">Delete</button></td>
+  </tr>`).join('');
+}
+
+async function confirmDeleteSchool(id, name) {
+  openModal('Delete School', 'Delete "' + name + '"? This cannot be undone.', async () => {
+    await api('/api/admin/schools/' + id, { method: 'DELETE' });
+    showToast('School deleted', 'success');
+    await loadSchools(); renderSchools();
+  });
+}
+
+// ─── Users ───────────────────────────────────────────────────────────────────
+let usersData = [];
+async function loadUsers() {
+  const data = await api('/api/admin/users');
+  usersData = data.users || [];
+  return usersData;
+}
+
+function renderUsers() {
+  const tbody = document.getElementById('users-tbody');
+  const q = (document.getElementById('users-search').value || '').toLowerCase();
+  let items = usersData;
+  if (q) items = items.filter(u => (u.name||'').toLowerCase().includes(q) || (u.phone||'').includes(q));
+  if (!items.length) return tbody.innerHTML = '<tr><td colspan="5" class="empty">No users found</td></tr>';
+  tbody.innerHTML = items.map(u => `<tr>
+    <td><strong>${u.name || 'Anonymous'}</strong></td>
+    <td>${u.phone || '-'}</td>
+    <td><span class="badge blue">${u.role || 'customer'}</span></td>
+    <td>${u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '-'}</td>
+    <td><button class="btn btn-red btn-sm" onclick="confirmDeleteUser('${u._id}','${(u.name||'Anonymous').replace(/'/g,"\\'")}')">Delete</button></td>
+  </tr>`).join('');
+}
+
+async function confirmDeleteUser(id, name) {
+  openModal('Delete User', 'Delete user "' + name + '"? This cannot be undone.', async () => {
+    await api('/api/admin/users/' + id, { method: 'DELETE' });
+    showToast('User deleted', 'success');
+    await loadUsers(); renderUsers();
+  });
+}
+
+// ─── Recharges ───────────────────────────────────────────────────────────────
+let rechargesData = [];
+async function loadRecharges() {
+  const f = document.getElementById('recharges-filter').value;
+  const path = f === 'pending' ? '/api/admin/recharges/pending' : '/api/admin/recharges/all';
+  const data = await api(path);
+  rechargesData = data.recharges || [];
+  return rechargesData;
+}
+
+function renderRecharges() {
+  const tbody = document.getElementById('recharges-tbody');
+  const items = rechargesData;
+  if (!items.length) return tbody.innerHTML = '<tr><td colspan="8" class="empty">No recharges found</td></tr>';
+  tbody.innerHTML = items.map(r => `<tr>
+    <td><strong>${r.userId?.name || 'N/A'}</strong></td>
+    <td>${r.userId?.phone || '-'}</td>
+    <td>₹${r.amount}</td>
+    <td style="font-family:monospace;font-size:12px">${r.utr || '-'}</td>
+    <td>${r.screenshot ? '<a href="'+r.screenshot+'" target="_blank" style="color:#3b82f6;text-decoration:none">View</a>' : '-'}</td>
+    <td><span class="badge ${r.status === 'approved' ? 'green' : r.status === 'rejected' ? 'red' : 'yellow'}">${r.status}</span></td>
+    <td style="white-space:nowrap">${r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '-'}</td>
+    <td style="display:flex;gap:4px;flex-wrap:wrap">
+      ${r.status === 'pending' ? `
+        <button class="btn btn-green btn-sm" onclick="confirmApproveRecharge('${r._id}')">Approve</button>
+        <button class="btn btn-red btn-sm" onclick="confirmRejectRecharge('${r._id}')">Reject</button>
+      ` : '-'}
+    </td>
+  </tr>`).join('');
+}
+
+async function confirmApproveRecharge(id) {
+  openModal('Approve Recharge', 'Approve this recharge?', async () => {
+    await api('/api/admin/recharges/approve/' + id, { method: 'POST' });
+    showToast('Recharge approved', 'success');
+    await loadRecharges(); renderRecharges();
+  });
+}
+async function confirmRejectRecharge(id) {
+  openModal('Reject Recharge', 'Reject this recharge?', async () => {
+    await api('/api/admin/recharges/reject/' + id, { method: 'POST' });
+    showToast('Recharge rejected', 'success');
+    await loadRecharges(); renderRecharges();
+  });
+}
+
+// ─── Subscriptions ───────────────────────────────────────────────────────────
+let subsData = [];
+async function loadSubscriptions() {
+  const type = document.getElementById('subs-type').value;
+  const path = '/api/admin/subscriptions/' + type;
+  const data = await api(path);
+  subsData = data.subscriptions || [];
+  return subsData;
+}
+
+function renderSubscriptions() {
+  const tbody = document.getElementById('subs-tbody');
+  const f = document.getElementById('subs-filter').value;
+  let items = subsData;
+  if (f === 'pending') items = items.filter(s => s.status === 'pending');
+  if (!items.length) return tbody.innerHTML = '<tr><td colspan="7" class="empty">No subscriptions found</td></tr>';
+  tbody.innerHTML = items.map(s => `<tr>
+    <td><strong>${s.userId?.name || 'N/A'}</strong></td>
+    <td>${s.plan || '-'}</td>
+    <td>₹${s.amount || 0}</td>
+    <td>${s.screenshot ? '<a href="'+s.screenshot+'" target="_blank" style="color:#3b82f6;text-decoration:none">View</a>' : '-'}</td>
+    <td><span class="badge ${s.status === 'active' ? 'green' : s.status === 'rejected' ? 'red' : 'yellow'}">${s.status}</span></td>
+    <td style="white-space:nowrap">${s.createdAt ? new Date(s.createdAt).toLocaleDateString() : '-'}</td>
+    <td style="display:flex;gap:4px;flex-wrap:wrap">
+      ${s.status === 'pending' ? `
+        <button class="btn btn-green btn-sm" onclick="confirmApproveSub('${s._id}')">Approve</button>
+        <button class="btn btn-red btn-sm" onclick="confirmRejectSub('${s._id}')">Reject</button>
+      ` : '-'}
+    </td>
+  </tr>`).join('');
+}
+
+async function confirmApproveSub(id) {
+  openModal('Approve Subscription', 'Approve this subscription?', async () => {
+    await api('/api/admin/subscriptions/approve/' + id, { method: 'POST' });
+    showToast('Subscription approved', 'success');
+    await loadSubscriptions(); renderSubscriptions();
+  });
+}
+async function confirmRejectSub(id) {
+  openModal('Reject Subscription', 'Reject this subscription?', async () => {
+    await api('/api/admin/subscriptions/reject/' + id, { method: 'POST' });
+    showToast('Subscription rejected', 'success');
+    await loadSubscriptions(); renderSubscriptions();
+  });
+}
+
+// ─── Init ────────────────────────────────────────────────────────────────────
+(async () => {
+  await Promise.all([loadSalons(), loadHospitals(), loadSchools(), loadUsers(), loadRecharges(), loadSubscriptions()]);
+  loadOverview();
+})();
+</script>
+</body>
+</html>

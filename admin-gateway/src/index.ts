@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
 import crypto from 'crypto';
+import cookieParser from 'cookie-parser';
 import path from 'path';
 import dotenv from 'dotenv';
 
@@ -10,12 +11,15 @@ dotenv.config();
 const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+app.use(cookieParser());
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
 
 const PORT = parseInt(process.env.PORT || '3002', 10);
 const ADMIN_ID = process.env.ADMIN_ID || '';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 const JWT_SECRET = process.env.JWT_SECRET || '';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '8h';
+const BACKEND_URL = (process.env.BACKEND_URL || 'http://localhost:3001').replace(/\/$/, '');
 const MAIN_FRONTEND_URL = (process.env.MAIN_FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
 const GMAIL_USER = process.env.GMAIL_USER || '';
 const GMAIL_APP_PASS = process.env.GMAIL_APP_PASS || '';
@@ -76,20 +80,20 @@ const LOGIN_PAGE = `<!DOCTYPE html>
     .bg-glow::before, .bg-glow::after { content: ''; position: absolute; width: 600px; height: 600px; border-radius: 50%; filter: blur(140px); }
     .bg-glow::before { top: 25%; left: 25%; background: rgba(37,99,235,0.08); }
     .bg-glow::after { bottom: 25%; right: 25%; background: rgba(124,58,237,0.06); }
-    .card { position: relative; width: 100%; max-width: 420px; background: #111; border: 1px solid rgba(255,255,255,0.08); border-radius: 24px; padding: 32px; box-shadow: 0 25px 50px rgba(0,0,0,0.6); backdrop-filter: blur(24px); }
+    .card { position: relative; width: 100%; max-width: 420px; background: #111; border: 1px solid rgba(255,255,255,0.08); border-radius: 24px; padding: 32px; box-shadow: 0 25px 50px rgba(0,0,0,0.6); }
     .icon-wrap { width: 64px; height: 64px; background: linear-gradient(135deg,#2563EB,#7C3AED); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; box-shadow: 0 4px 24px rgba(37,99,235,0.25); }
-    .icon-wrap svg { width: 32px; height: 32px; fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .icon-wrap svg { width: 32px; height: 32px; fill: none; stroke: #fff; stroke-width: 2; }
     h1 { color: #fff; font-size: 22px; text-align: center; margin-bottom: 4px; }
     .subtitle { color: #64748b; font-size: 13px; text-align: center; margin-bottom: 28px; }
     .field { margin-bottom: 16px; }
     label { display: block; color: #94a3b8; font-size: 13px; font-weight: 500; margin-bottom: 6px; }
     .input-wrap { position: relative; }
-    .input-wrap svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; stroke: #475569; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    input { width: 100%; background: #1A1A1A; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 11px 14px 11px 42px; color: #fff; font-size: 14px; outline: none; transition: border-color 0.2s; }
+    .input-wrap svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; stroke: #475569; fill: none; stroke-width: 2; }
+    input { width: 100%; background: #1A1A1A; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 11px 14px 11px 42px; color: #fff; font-size: 14px; outline: none; }
     input:focus { border-color: rgba(37,99,235,0.5); }
     input::placeholder { color: #475569; }
     .error { color: #f87171; font-size: 12px; margin-top: 4px; display: none; }
-    button { width: 100%; padding: 12px; background: linear-gradient(135deg,#2563EB,#7C3AED); color: #fff; font-size: 15px; font-weight: 600; border: none; border-radius: 12px; cursor: pointer; margin-top: 8px; transition: opacity 0.2s; box-shadow: 0 4px 20px rgba(37,99,235,0.2); }
+    button { width: 100%; padding: 12px; background: linear-gradient(135deg,#2563EB,#7C3AED); color: #fff; font-size: 15px; font-weight: 600; border: none; border-radius: 12px; cursor: pointer; margin-top: 8px; }
     button:hover { opacity: 0.9; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
     .footer { color: #475569; font-size: 11px; text-align: center; margin-top: 24px; }
@@ -139,21 +143,20 @@ const VERIFY_PAGE = (error: string) => `<!DOCTYPE html>
     .bg-glow::before, .bg-glow::after { content: ''; position: absolute; width: 600px; height: 600px; border-radius: 50%; filter: blur(140px); }
     .bg-glow::before { top: 25%; left: 25%; background: rgba(37,99,235,0.08); }
     .bg-glow::after { bottom: 25%; right: 25%; background: rgba(124,58,237,0.06); }
-    .card { position: relative; width: 100%; max-width: 420px; background: #111; border: 1px solid rgba(255,255,255,0.08); border-radius: 24px; padding: 32px; box-shadow: 0 25px 50px rgba(0,0,0,0.6); backdrop-filter: blur(24px); text-align: center; }
+    .card { position: relative; width: 100%; max-width: 420px; background: #111; border: 1px solid rgba(255,255,255,0.08); border-radius: 24px; padding: 32px; box-shadow: 0 25px 50px rgba(0,0,0,0.6); text-align: center; }
     .icon-wrap { width: 64px; height: 64px; background: linear-gradient(135deg,#2563EB,#7C3AED); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; box-shadow: 0 4px 24px rgba(37,99,235,0.25); }
-    .icon-wrap svg { width: 32px; height: 32px; fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .icon-wrap svg { width: 32px; height: 32px; fill: none; stroke: #fff; stroke-width: 2; }
     h1 { color: #fff; font-size: 22px; margin-bottom: 4px; }
     .subtitle { color: #94a3b8; font-size: 13px; margin-bottom: 8px; }
     .email-note { color: #64748b; font-size: 12px; margin-bottom: 24px; }
     .field { margin-bottom: 16px; }
     label { display: block; color: #94a3b8; font-size: 13px; font-weight: 500; margin-bottom: 6px; }
-    input { width: 100%; background: #1A1A1A; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 11px 14px; color: #fff; font-size: 24px; letter-spacing: 8px; text-align: center; font-family: monospace; outline: none; transition: border-color 0.2s; }
+    input { width: 100%; background: #1A1A1A; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 11px 14px; color: #fff; font-size: 24px; letter-spacing: 8px; text-align: center; font-family: monospace; outline: none; }
     input:focus { border-color: rgba(37,99,235,0.5); }
     input::placeholder { font-size: 14px; letter-spacing: 0; color: #475569; }
     .error { color: #f87171; font-size: 12px; margin-top: 8px; ${error ? '' : 'display: none;'} }
-    button { width: 100%; padding: 12px; background: linear-gradient(135deg,#2563EB,#7C3AED); color: #fff; font-size: 15px; font-weight: 600; border: none; border-radius: 12px; cursor: pointer; margin-top: 8px; transition: opacity 0.2s; box-shadow: 0 4px 20px rgba(37,99,235,0.2); }
+    button { width: 100%; padding: 12px; background: linear-gradient(135deg,#2563EB,#7C3AED); color: #fff; font-size: 15px; font-weight: 600; border: none; border-radius: 12px; cursor: pointer; margin-top: 8px; }
     button:hover { opacity: 0.9; }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
     .back-link { display: inline-block; margin-top: 20px; color: #64748b; font-size: 12px; text-decoration: none; }
     .back-link:hover { color: #94a3b8; }
   </style>
@@ -180,6 +183,60 @@ const VERIFY_PAGE = (error: string) => `<!DOCTYPE html>
   </div>
 </body>
 </html>`;
+
+const COOKIE_NAME = 'dqms_admin_token';
+
+function getTokenFromCookie(req: Request): string | undefined {
+  return req.cookies?.[COOKIE_NAME];
+}
+
+function requireAuth(req: Request, res: Response, next: () => void): void {
+  const token = getTokenFromCookie(req);
+  if (!token) {
+    return res.redirect('/');
+  }
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; role: string };
+    if (decoded.role !== 'admin') {
+      return res.redirect('/');
+    }
+    (req as any).adminToken = token;
+    next();
+  } catch {
+    res.clearCookie(COOKIE_NAME);
+    res.redirect('/');
+  }
+}
+
+async function proxyToBackend(req: Request, res: Response): Promise<void> {
+  const token = getTokenFromCookie(req);
+  if (!token) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  const targetPath = req.originalUrl;
+  const targetUrl = `${BACKEND_URL}${targetPath}`;
+
+  try {
+    const backendRes = await fetch(targetUrl, {
+      method: req.method,
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: req.method === 'GET' || req.method === 'DELETE' ? undefined : JSON.stringify(req.body),
+    });
+
+    const data = await backendRes.json();
+    res.status(backendRes.status).json(data);
+  } catch (err) {
+    console.error('Proxy error:', err);
+    res.status(502).json({ error: 'Failed to reach backend' });
+  }
+}
+
+// ─── Routes ──────────────────────────────────────────────────────────────────
 
 app.get('/', (_req: Request, res: Response) => {
   servePage(res, LOGIN_PAGE);
@@ -235,8 +292,27 @@ app.post('/verify', (req: Request, res: Response) => {
     expiresIn: '8h' as any,
   });
 
-  res.redirect(`${MAIN_FRONTEND_URL}/admin/auth-callback?token=${token}`);
+  res.cookie(COOKIE_NAME, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 8 * 60 * 60 * 1000,
+  });
+
+  res.redirect('/dashboard');
 });
+
+app.get('/dashboard', requireAuth, (_req: Request, res: Response) => {
+  res.render('dashboard');
+});
+
+app.get('/logout', (_req: Request, res: Response) => {
+  res.clearCookie(COOKIE_NAME);
+  res.redirect('/');
+});
+
+// Proxy admin API calls to backend
+app.all('/api/admin/*', requireAuth, proxyToBackend);
 
 app.listen(PORT, () => {
   console.log(`DQMS Admin Gateway running on http://localhost:${PORT}`);
