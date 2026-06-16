@@ -1,6 +1,5 @@
 import express, { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import nodemailer from 'nodemailer';
 import crypto from 'crypto';
 import cookieParser from 'cookie-parser';
 import path from 'path';
@@ -22,31 +21,10 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 const JWT_SECRET = process.env.JWT_SECRET || '';
 const BACKEND_URL = (process.env.BACKEND_URL || 'http://localhost:3001').replace(/\/$/, '');
 const MAIN_FRONTEND_URL = (process.env.MAIN_FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
-const GMAIL_USER = process.env.GMAIL_USER || '';
-const GMAIL_APP_PASS = (process.env.GMAIL_APP_PASS || '').replace(/\s+/g, '');
 const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || '';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || '';
 
-const useGmail = !!(GMAIL_USER && GMAIL_APP_PASS);
-
-if (SENDGRID_API_KEY) {
-  sgMail.setApiKey(SENDGRID_API_KEY);
-}
-
-function transporter() {
-  if (useGmail) {
-    return nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 587,
-      secure: false,
-      requireTLS: true,
-      auth: { user: GMAIL_USER, pass: GMAIL_APP_PASS },
-    });
-  }
-  return null;
-}
-
-const mailTransporter = transporter();
+sgMail.setApiKey(SENDGRID_API_KEY);
 
 interface OtpEntry {
   otp: string;
@@ -74,25 +52,12 @@ const OTP_HTML = (otp: string) => `
   </div>`;
 
 async function sendOtpEmail(email: string, otp: string): Promise<void> {
-  if (useGmail && mailTransporter) {
-    await mailTransporter.sendMail({
-      from: `"DQMS Admin" <${GMAIL_USER}>`,
-      to: email,
-      subject: 'DQMS Admin Login OTP',
-      html: OTP_HTML(otp),
-    });
-    return;
-  }
-  if (SENDGRID_API_KEY) {
-    await sgMail.send({
-      from: { email: ADMIN_EMAIL || email, name: 'DQMS Admin' },
-      to: email,
-      subject: 'DQMS Admin Login OTP',
-      html: OTP_HTML(otp),
-    });
-    return;
-  }
-  throw new Error('No email provider configured. Set GMAIL_USER+GMAIL_APP_PASS or SENDGRID_API_KEY.');
+  await sgMail.send({
+    from: { email: ADMIN_EMAIL || email, name: 'DQMS Admin' },
+    to: email,
+    subject: 'DQMS Admin Login OTP',
+    html: OTP_HTML(otp),
+  });
 }
 
 function servePage(res: Response, html: string): void {
