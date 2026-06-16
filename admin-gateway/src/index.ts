@@ -26,9 +26,11 @@ const GMAIL_APP_PASS = (process.env.GMAIL_APP_PASS || '').replace(/\s+/g, '');
 
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
-  port: 465,
-  secure: true,
+  port: 587,
+  secure: false,
+  requireTLS: true,
   auth: { user: GMAIL_USER, pass: GMAIL_APP_PASS },
+  connectionTimeout: 15000,
 });
 
 interface OtpEntry {
