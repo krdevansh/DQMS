@@ -8,6 +8,7 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "@whiskeysockets/baileys": "^6.17.16",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^2.10.0",
     "cors": "^2.8.5",
@@ -16,7 +17,6 @@
     "firebase-admin": "^13.10.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.7.0",
-    "@whiskeysockets/baileys": "^6.7.0",
     "node-cron": "^4.2.1",
     "pino": "^9.0.0",
     "qrcode": "^1.5.4",
@@ -33,7 +33,6 @@
     "@types/node-cron": "^3.0.11",
     "@types/qrcode": "^1.5.6",
     "@types/qrcode-terminal": "^0.12.2",
-
     "tsx": "^4.19.0",
     "typescript": "^5.6.0"
   }
