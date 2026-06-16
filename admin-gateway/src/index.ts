@@ -43,7 +43,7 @@ function sendOtpEmail(email: string, otp: string): Promise<unknown> {
     throw new Error('SENDGRID_API_KEY is not configured');
   }
   return sgMail.send({
-    from: { email: 'noreply@dqms-admin.com', name: 'DQMS Admin' },
+    from: { email: ADMIN_EMAIL, name: 'DQMS Admin' },
     to: email,
     subject: 'DQMS Admin Login OTP',
     html: `
