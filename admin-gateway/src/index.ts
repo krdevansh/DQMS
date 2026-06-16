@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
+import nodemailer from 'nodemailer';
 import crypto from 'crypto';
 import cookieParser from 'cookie-parser';
 import path from 'path';
@@ -21,12 +22,31 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 const JWT_SECRET = process.env.JWT_SECRET || '';
 const BACKEND_URL = (process.env.BACKEND_URL || 'http://localhost:3001').replace(/\/$/, '');
 const MAIN_FRONTEND_URL = (process.env.MAIN_FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
+const GMAIL_USER = process.env.GMAIL_USER || '';
+const GMAIL_APP_PASS = (process.env.GMAIL_APP_PASS || '').replace(/\s+/g, '');
 const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || '';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || '';
+
+const useGmail = !!(GMAIL_USER && GMAIL_APP_PASS);
 
 if (SENDGRID_API_KEY) {
   sgMail.setApiKey(SENDGRID_API_KEY);
 }
+
+function transporter() {
+  if (useGmail) {
+    return nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false,
+      requireTLS: true,
+      auth: { user: GMAIL_USER, pass: GMAIL_APP_PASS },
+    });
+  }
+  return null;
+}
+
+const mailTransporter = transporter();
 
 interface OtpEntry {
   otp: string;
@@ -38,30 +58,41 @@ function generateOtp(): string {
   return crypto.randomInt(100000, 999999).toString();
 }
 
-function sendOtpEmail(email: string, otp: string): Promise<unknown> {
-  if (!SENDGRID_API_KEY) {
-    throw new Error('SENDGRID_API_KEY is not configured');
-  }
-  return sgMail.send({
-    from: { email: ADMIN_EMAIL, name: 'DQMS Admin' },
-    to: email,
-    subject: 'DQMS Admin Login OTP',
-    html: `
-      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;background:#111;color:#fff;padding:32px;border-radius:16px;border:1px solid #ffffff22">
-        <div style="text-align:center;margin-bottom:24px">
-          <div style="width:56px;height:56px;background:linear-gradient(135deg,#2563EB,#7C3AED);border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px">
-            <span style="font-size:28px">🛡️</span>
-          </div>
-          <h1 style="font-size:20px;margin:0">DQMS Admin Login</h1>
-        </div>
-        <p style="color:#a0aec0;font-size:14px;margin-bottom:24px">Use the OTP below to complete your login. It expires in 5 minutes.</p>
-        <div style="background:#1a1a1a;border-radius:12px;padding:20px;text-align:center;border:1px solid #ffffff11">
-          <span style="font-size:36px;font-weight:700;letter-spacing:8px;color:#fff;font-family:monospace">${otp}</span>
-        </div>
-        <p style="color:#4a5568;font-size:12px;margin-top:24px;text-align:center">If you did not request this, ignore this email.</p>
+const OTP_HTML = (otp: string) => `
+  <div style="font-family:sans-serif;max-width:480px;margin:0 auto;background:#111;color:#fff;padding:32px;border-radius:16px;border:1px solid #ffffff22">
+    <div style="text-align:center;margin-bottom:24px">
+      <div style="width:56px;height:56px;background:linear-gradient(135deg,#2563EB,#7C3AED);border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px">
+        <span style="font-size:28px">🛡️</span>
       </div>
-    `,
-  });
+      <h1 style="font-size:20px;margin:0">DQMS Admin Login</h1>
+    </div>
+    <p style="color:#a0aec0;font-size:14px;margin-bottom:24px">Use the OTP below to complete your login. It expires in 5 minutes.</p>
+    <div style="background:#1a1a1a;border-radius:12px;padding:20px;text-align:center;border:1px solid #ffffff11">
+      <span style="font-size:36px;font-weight:700;letter-spacing:8px;color:#fff;font-family:monospace">${otp}</span>
+    </div>
+    <p style="color:#4a5568;font-size:12px;margin-top:24px;text-align:center">If you did not request this, ignore this email.</p>
+  </div>`;
+
+async function sendOtpEmail(email: string, otp: string): Promise<void> {
+  if (useGmail && mailTransporter) {
+    await mailTransporter.sendMail({
+      from: `"DQMS Admin" <${GMAIL_USER}>`,
+      to: email,
+      subject: 'DQMS Admin Login OTP',
+      html: OTP_HTML(otp),
+    });
+    return;
+  }
+  if (SENDGRID_API_KEY) {
+    await sgMail.send({
+      from: { email: ADMIN_EMAIL || email, name: 'DQMS Admin' },
+      to: email,
+      subject: 'DQMS Admin Login OTP',
+      html: OTP_HTML(otp),
+    });
+    return;
+  }
+  throw new Error('No email provider configured. Set GMAIL_USER+GMAIL_APP_PASS or SENDGRID_API_KEY.');
 }
 
 function servePage(res: Response, html: string): void {
