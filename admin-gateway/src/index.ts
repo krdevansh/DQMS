@@ -1,10 +1,10 @@
 import express, { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import nodemailer from 'nodemailer';
 import crypto from 'crypto';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import dotenv from 'dotenv';
+import sgMail from '@sendgrid/mail';
 
 dotenv.config();
 
@@ -22,33 +22,10 @@ const JWT_SECRET = process.env.JWT_SECRET || '';
 const BACKEND_URL = (process.env.BACKEND_URL || 'http://localhost:3001').replace(/\/$/, '');
 const MAIN_FRONTEND_URL = (process.env.MAIN_FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
 const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || '';
-const GMAIL_USER = process.env.GMAIL_USER || '';
-const GMAIL_APP_PASS = (process.env.GMAIL_APP_PASS || '').replace(/\s+/g, '');
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || '';
 
-function createTransporter() {
-  if (SENDGRID_API_KEY) {
-    return nodemailer.createTransport({
-      host: 'smtp.sendgrid.net',
-      port: 587,
-      secure: false,
-      auth: { user: 'apikey', pass: SENDGRID_API_KEY },
-      connectionTimeout: 15000,
-    });
-  }
-  return nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false,
-    requireTLS: true,
-    auth: { user: GMAIL_USER, pass: GMAIL_APP_PASS },
-    connectionTimeout: 15000,
-  });
-}
-
-const transporter = createTransporter();
-
-function getSenderEmail() {
-  return SENDGRID_API_KEY ? 'noreply@dqms-admin.com' : GMAIL_USER;
+if (SENDGRID_API_KEY) {
+  sgMail.setApiKey(SENDGRID_API_KEY);
 }
 
 interface OtpEntry {
@@ -62,8 +39,11 @@ function generateOtp(): string {
 }
 
 function sendOtpEmail(email: string, otp: string): Promise<unknown> {
-  return transporter.sendMail({
-    from: `"DQMS Admin" <${getSenderEmail()}>`,
+  if (!SENDGRID_API_KEY) {
+    throw new Error('SENDGRID_API_KEY is not configured');
+  }
+  return sgMail.send({
+    from: { email: 'noreply@dqms-admin.com', name: 'DQMS Admin' },
     to: email,
     subject: 'DQMS Admin Login OTP',
     html: `
@@ -279,12 +259,13 @@ app.post('/login', async (req: Request, res: Response) => {
   otpStore.set(adminId, { otp, expiresAt: Date.now() + 5 * 60 * 1000 });
 
   try {
-    await sendOtpEmail(GMAIL_USER, otp);
+    if (!ADMIN_EMAIL) throw new Error('ADMIN_EMAIL is not configured');
+    await sendOtpEmail(ADMIN_EMAIL, otp);
     servePage(res, VERIFY_PAGE('').replace('__ADMIN_ID__', adminId));
   } catch (err: any) {
     console.error('Email send error:', err?.message || err);
     otpStore.delete(adminId);
-    const detail = err?.message?.includes('auth') ? 'Invalid GMAIL_USER or GMAIL_APP_PASS' : err?.message || 'Unknown error';
+    const detail = err?.message || 'Unknown error';
     servePage(res, LOGIN_PAGE.replace('id="error" class="error"', 'id="error" class="error" style="display:block"').replace('</p>', `Email failed: ${detail}</p>`));
   }
 });
