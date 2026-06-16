@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
   LayoutDashboard,
@@ -11,7 +10,6 @@ import {
   AlertCircle,
   ArrowRight,
   Zap,
-  ShieldCheck,
   Sun,
   Moon
 } from 'lucide-react';
@@ -129,14 +127,6 @@ export default function HomePage() {
                 >
                   {theme === 'light' ? <Moon className="w-4 h-4 sm:w-5 sm:h-5" /> : <Sun className="w-4 h-4 sm:w-5 sm:h-5" />}
                 </button>
-                <Link
-                  href="/admin/login"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-[#111118] hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white transition-all text-xs sm:text-sm font-medium group"
-                  title="Admin Portal"
-                >
-                  <ShieldCheck className="w-4 h-4 group-hover:text-[#2563EB] transition-colors" />
-                  <span className="hidden sm:inline">Admin</span>
-                </Link>
               </div>
             </div>
           </div>
@@ -241,23 +231,64 @@ export default function HomePage() {
           </div>
         </section>
 
-        <footer className="dqms-footer py-10 sm:py-12 px-4 sm:px-6">
-          <div className="max-w-6xl mx-auto text-center">
-            <div className="flex items-center justify-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-              <div className="bg-gradient-to-br from-[#2563EB] to-[#06B6D4] p-1.5 sm:p-2 rounded-lg sm:rounded-xl">
-                <LayoutDashboard className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+        <footer className="dqms-footer py-12 sm:py-16 px-4 sm:px-6">
+          <div className="max-w-6xl mx-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-10 mb-10 sm:mb-12">
+              <div className="sm:col-span-2 lg:col-span-1">
+                <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+                  <div className="bg-gradient-to-br from-[#2563EB] to-[#06B6D4] p-1.5 sm:p-2 rounded-lg sm:rounded-xl">
+                    <LayoutDashboard className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                  </div>
+                  <span className="text-lg sm:text-xl font-bold">DQMS</span>
+                </div>
+                <p className="text-slate-400 text-xs sm:text-sm leading-relaxed mb-3 sm:mb-4">
+                  Devansh Queue Management System is a unified platform for eliminating waiting rooms across salons, hospitals, and schools.
+                </p>
+                <p className="text-slate-500 text-xs">
+                  Built by Kumar Devansh<br />
+                  B.Tech CSE, LPU University
+                </p>
               </div>
-              <span className="text-lg sm:text-xl font-bold">DQMS</span>
+
+              <div>
+                <h4 className="text-white font-semibold text-sm sm:text-base mb-3 sm:mb-4">Quick Links</h4>
+                <ul className="space-y-2 sm:space-y-2.5">
+                  <li><a href="#services" className="text-slate-400 hover:text-white text-xs sm:text-sm transition-colors">Services</a></li>
+                  <li><a href="/salon" className="text-slate-400 hover:text-white text-xs sm:text-sm transition-colors">Salon Portal</a></li>
+                  <li><a href="/hospital" className="text-slate-400 hover:text-white text-xs sm:text-sm transition-colors">Hospital Portal</a></li>
+                  <li><a href="/school" className="text-slate-400 hover:text-white text-xs sm:text-sm transition-colors">School Portal</a></li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="text-white font-semibold text-sm sm:text-base mb-3 sm:mb-4">Support</h4>
+                <ul className="space-y-2 sm:space-y-2.5">
+                  <li><a href="#" className="text-slate-400 hover:text-white text-xs sm:text-sm transition-colors">Help Center</a></li>
+                  <li><a href="#" className="text-slate-400 hover:text-white text-xs sm:text-sm transition-colors">Contact Us</a></li>
+                  <li><a href="#" className="text-slate-400 hover:text-white text-xs sm:text-sm transition-colors">FAQ</a></li>
+                  <li><a href="#" className="text-slate-400 hover:text-white text-xs sm:text-sm transition-colors">Report Issue</a></li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="text-white font-semibold text-sm sm:text-base mb-3 sm:mb-4">Legal</h4>
+                <ul className="space-y-2 sm:space-y-2.5">
+                  <li><a href="#" className="text-slate-400 hover:text-white text-xs sm:text-sm transition-colors">Privacy Policy</a></li>
+                  <li><a href="#" className="text-slate-400 hover:text-white text-xs sm:text-sm transition-colors">Terms of Service</a></li>
+                  <li><a href="#" className="text-slate-400 hover:text-white text-xs sm:text-sm transition-colors">Cookie Policy</a></li>
+                  <li><a href="#" className="text-slate-400 hover:text-white text-xs sm:text-sm transition-colors">Refund Policy</a></li>
+                </ul>
+              </div>
             </div>
-            <p className="text-slate-300 text-xs sm:text-sm font-semibold tracking-wide mb-2">
-              DQMS — Digital Queue Management System
-            </p>
-            <p className="text-slate-400 text-xs sm:text-sm mb-4 sm:mb-6 px-4 sm:px-0">
-              Built by Kumar Devansh | B.Tech CSE, LPU University
-            </p>
-            <p className="text-[10px] sm:text-sm text-slate-500">
-              &copy; {new Date().getFullYear()} Kumar Devansh. All Rights Reserved.
-            </p>
+
+            <div className="border-t border-white/10 pt-6 sm:pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <p className="text-slate-500 text-xs sm:text-sm text-center sm:text-left">
+                &copy; {new Date().getFullYear()} Kumar Devansh. All rights reserved.
+              </p>
+              <p className="text-slate-500 text-xs">
+                Made with <span className="text-red-400">&hearts;</span> in India
+              </p>
+            </div>
           </div>
         </footer>
       </div>
