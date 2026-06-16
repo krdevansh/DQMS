@@ -22,10 +22,12 @@ const JWT_SECRET = process.env.JWT_SECRET || '';
 const BACKEND_URL = (process.env.BACKEND_URL || 'http://localhost:3001').replace(/\/$/, '');
 const MAIN_FRONTEND_URL = (process.env.MAIN_FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
 const GMAIL_USER = process.env.GMAIL_USER || '';
-const GMAIL_APP_PASS = process.env.GMAIL_APP_PASS || '';
+const GMAIL_APP_PASS = (process.env.GMAIL_APP_PASS || '').replace(/\s+/g, '');
 
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true,
   auth: { user: GMAIL_USER, pass: GMAIL_APP_PASS },
 });
 
@@ -259,9 +261,11 @@ app.post('/login', async (req: Request, res: Response) => {
   try {
     await sendOtpEmail(GMAIL_USER, otp);
     servePage(res, VERIFY_PAGE('').replace('__ADMIN_ID__', adminId));
-  } catch {
+  } catch (err: any) {
+    console.error('Email send error:', err?.message || err);
     otpStore.delete(adminId);
-    servePage(res, LOGIN_PAGE.replace('id="error" class="error"', 'id="error" class="error" style="display:block"').replace('</p>', 'Failed to send OTP. Check Gmail configuration.</p>'));
+    const detail = err?.message?.includes('auth') ? 'Invalid GMAIL_USER or GMAIL_APP_PASS' : err?.message || 'Unknown error';
+    servePage(res, LOGIN_PAGE.replace('id="error" class="error"', 'id="error" class="error" style="display:block"').replace('</p>', `Email failed: ${detail}</p>`));
   }
 });
 
